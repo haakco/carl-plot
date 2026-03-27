@@ -1,6 +1,7 @@
 import { useStore } from "@tanstack/react-store";
 import { Settings } from "lucide-react";
 import { useState } from "react";
+import { getTheme, toggleTheme } from "@/lib/theme";
 import {
 	explorerStore,
 	toggleEnforceConjugates,
@@ -37,6 +38,7 @@ function ToggleRow({
 
 export function SettingsPanel() {
 	const [isOpen, setIsOpen] = useState(false);
+	const [isDark, setIsDark] = useState(() => getTheme() === "dark");
 	const enforceConjugates = useStore(explorerStore, (s) => s.enforceConjugates);
 	const showModContours = useStore(explorerStore, (s) => s.showModContours);
 	const showPhaseContours = useStore(explorerStore, (s) => s.showPhaseContours);
@@ -94,6 +96,17 @@ export function SettingsPanel() {
 							value={contourDensity}
 							onChange={(e) => setContourDensity(Number.parseFloat(e.target.value))}
 							className="mt-1 h-1.5 w-full cursor-pointer accent-foreground"
+						/>
+					</div>
+
+					<div className="mt-3 border-t pt-3">
+						<ToggleRow
+							label="Dark mode"
+							checked={isDark}
+							onChange={() => {
+								const newTheme = toggleTheme();
+								setIsDark(newTheme === "dark");
+							}}
 						/>
 					</div>
 				</div>

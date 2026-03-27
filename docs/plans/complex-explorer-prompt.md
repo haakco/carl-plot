@@ -1256,6 +1256,12 @@ Dragging is the signature interaction, but it cannot be the only first-class int
 31. Bundle size verification
 32. E2E tests for core interactions
 
+### Phase 5: Deployment (Target: +0.5 day)
+
+33. GitHub Pages deployment via GitHub Actions (build on push to main)
+34. Custom domain setup for `plot.catrgb.com` (CNAME record + GitHub Pages config)
+35. Vite `base` path configuration for GitHub Pages compatibility
+
 ---
 
 ## 16. Design Validation Checklist

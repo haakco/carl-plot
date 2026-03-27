@@ -9,6 +9,8 @@ export interface ExplorerState {
 	zeros: Complex[];
 	gain: number;
 	expression: string;
+	expressionError: string | null;
+	expressionLatex: string;
 
 	center: { re: number; im: number };
 	zoom: number;
@@ -32,6 +34,8 @@ const initialState: ExplorerState = {
 	zeros: [createComplex("zero", 0, 0)],
 	gain: 1,
 	expression: "",
+	expressionError: null,
+	expressionLatex: "",
 
 	center: { re: 0, im: 0 },
 	zoom: 1,
@@ -86,6 +90,10 @@ export function moveSingularity(id: string, re: number, im: number): void {
 		poles: updatePosition(prev.poles),
 		zeros: updatePosition(prev.zeros),
 	}));
+}
+
+export function setMode(mode: "poles-zeros" | "expression"): void {
+	explorerStore.setState((prev) => ({ ...prev, mode }));
 }
 
 export function setExpression(expression: string): void {
@@ -159,6 +167,8 @@ export function loadPreset(preset: Preset): void {
 		center: preset.center,
 		zoom: preset.zoom,
 		expression: "",
+		expressionError: null,
+		expressionLatex: "",
 		selectedId: null,
 		hoveredId: null,
 	}));

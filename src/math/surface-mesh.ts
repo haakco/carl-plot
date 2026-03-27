@@ -2,11 +2,13 @@ import type { Complex } from "./complex";
 
 const MAX_HEIGHT = 5;
 
-interface MeshData {
+export interface MeshData {
 	positions: Float32Array;
 	colors: Float32Array;
 	indices: Uint32Array;
 }
+
+type EvalFn = (re: number, im: number) => { mag: number; arg: number };
 
 function evaluateF(
 	re: number,
@@ -82,6 +84,7 @@ export function generateSurfaceMesh(
 	center: { re: number; im: number },
 	zoom: number,
 	resolution = 128,
+	customEval?: EvalFn,
 ): MeshData {
 	const extent = 3 / zoom;
 	const step = (2 * extent) / resolution;
@@ -96,7 +99,7 @@ export function generateSurfaceMesh(
 			const re = center.re - extent + i * step;
 			const im = center.im - extent + j * step;
 
-			const { mag, arg } = evaluateF(re, im, poles, zeros, gain);
+			const { mag, arg } = customEval ? customEval(re, im) : evaluateF(re, im, poles, zeros, gain);
 			const height = Math.min((2 / Math.PI) * Math.atan(mag), 1) * MAX_HEIGHT;
 
 			positions[idx * 3] = re - center.re;

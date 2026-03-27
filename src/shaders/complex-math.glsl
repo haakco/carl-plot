@@ -40,3 +40,40 @@ vec2 csin(vec2 z) {
 vec2 ccos(vec2 z) {
     return vec2(cos(z.x) * cosh(z.y), -sin(z.x) * sinh(z.y));
 }
+
+// Complex tangent: sin(z)/cos(z)
+vec2 ctan(vec2 z) {
+    return cdiv(csin(z), ccos(z));
+}
+
+// Complex hyperbolic sine: sinh(a+bi) = sinh(a)cos(b) + i*cosh(a)sin(b)
+vec2 csinh(vec2 z) {
+    return vec2(sinh(z.x) * cos(z.y), cosh(z.x) * sin(z.y));
+}
+
+// Complex hyperbolic cosine: cosh(a+bi) = cosh(a)cos(b) + i*sinh(a)sin(b)
+vec2 ccosh(vec2 z) {
+    return vec2(cosh(z.x) * cos(z.y), sinh(z.x) * sin(z.y));
+}
+
+// Complex square root via polar form
+vec2 csqrt(vec2 z) {
+    float r = length(z);
+    float theta = atan(z.y, z.x);
+    return sqrt(r) * vec2(cos(theta * 0.5), sin(theta * 0.5));
+}
+
+// Complex conjugate
+vec2 cconj(vec2 z) {
+    return vec2(z.x, -z.y);
+}
+
+// Complex absolute value (returns as complex with zero imaginary)
+vec2 cabs_vec(vec2 z) {
+    return vec2(length(z), 0.0);
+}
+
+// Complex argument (returns as complex with zero imaginary)
+vec2 carg_vec(vec2 z) {
+    return vec2(atan(z.y, z.x), 0.0);
+}
