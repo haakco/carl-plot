@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build",
+    "build": "vite build && cp dist/client/index.html dist/client/404.html",
     "preview": "vite preview",
     "lint": "pnpm biome check src/ && pnpm lint:duplicates",
     "lint:fix": "pnpm biome check --write src/",

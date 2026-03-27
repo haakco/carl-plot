@@ -1,8 +1,9 @@
 import { useStore } from "@tanstack/react-store";
 import { useEffect, useRef } from "react";
+import { useHotkeys } from "react-hotkeys-hook";
 import { CommandMenu } from "@/components/common/CommandMenu";
 import { decodeStateFromUrl, encodeStateToUrl } from "@/lib/url-state";
-import { explorerStore } from "@/store/explorer-store";
+import { explorerStore, redo, removeSingularity, undo } from "@/store/explorer-store";
 import { Canvas2D } from "./Canvas2D";
 import { Canvas3D } from "./Canvas3D";
 import { CoordReadout } from "./CoordReadout";
@@ -13,6 +14,21 @@ import { TopBar } from "./TopBar";
 export function ExplorerLayout() {
 	const viewMode = useStore(explorerStore, (s) => s.viewMode);
 	const hasInitialized = useRef(false);
+
+	useHotkeys("delete, backspace", () => {
+		const { selectedId } = explorerStore.state;
+		if (selectedId) removeSingularity(selectedId);
+	});
+
+	useHotkeys("mod+z", (e) => {
+		e.preventDefault();
+		undo();
+	});
+
+	useHotkeys("mod+shift+z", (e) => {
+		e.preventDefault();
+		redo();
+	});
 
 	useEffect(() => {
 		if (!hasInitialized.current) {

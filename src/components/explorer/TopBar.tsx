@@ -13,6 +13,7 @@ export function TopBar() {
 				<button
 					type="button"
 					onClick={() => setViewMode("2d")}
+					aria-pressed={viewMode === "2d"}
 					className={`rounded-sm px-2 py-0.5 text-[13px] font-medium transition-colors ${
 						viewMode === "2d"
 							? "bg-secondary text-secondary-foreground"
@@ -24,6 +25,7 @@ export function TopBar() {
 				<button
 					type="button"
 					onClick={() => setViewMode("3d")}
+					aria-pressed={viewMode === "3d"}
 					className={`rounded-sm px-2 py-0.5 text-[13px] font-medium transition-colors ${
 						viewMode === "3d"
 							? "bg-secondary text-secondary-foreground"
