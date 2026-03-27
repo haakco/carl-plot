@@ -1,0 +1,7 @@
+{
+  "threshold": 5,
+  "reporters": ["console"],
+  "ignore": ["node_modules", "dist", "pnpm-lock.yaml", "**/*.d.ts"],
+  "absolute": true,
+  "gitignore": true
+}

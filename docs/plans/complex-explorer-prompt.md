@@ -84,11 +84,11 @@ University students taking a first or second course in complex analysis. They op
 |-------|-----------|---------|-----------|
 | Runtime | Node.js | **24.x** | Project standard runtime. Use Node 24 locally, in CI, and in deployment/dev tooling for consistency with the rest of HaakCo |
 | Package manager | pnpm | **10.x** | Project standard package manager. Use pnpm for install, scripts, lockfile, and workspace/tooling consistency |
-| Build | Vite | 7.x | Fast HMR, native ESM, plugin ecosystem |
+| Build | Vite | 8.x | Rolldown-based bundler (10-30x faster builds), native ESM, plugin ecosystem. Fall back to Vite 7 if Vike compatibility issues arise |
 | Routing | Vike | latest | SPA mode for this app (no SSR needed — single interactive page). File-based routing if multi-page later |
 | UI Framework | React | 19.x | Hooks, concurrent features, R3F compatibility |
 | Language | TypeScript | 5.9+ | Strict mode. Use `tsgo` for fast type checking |
-| Type checking | tsgo | latest | ~7s vs ~60s with tsc |
+| Type checking | tsgo (fallback: tsc) | latest | ~7s vs ~60s with tsc. tsgo is experimental — fall back to tsc if unavailable |
 
 ### Rendering & GPU
 
@@ -124,8 +124,8 @@ University students taking a first or second course in complex analysis. They op
 
 | Layer | Technology | Rationale |
 |-------|-----------|-----------|
-| Global state | Zustand v5 | `getState()` readable outside React (GPU render loop). R3F uses it internally. No provider wrapping |
-| Undo/redo | Zustand middleware (temporal) | State history stack for pole/zero manipulations |
+| Global state | @tanstack/store + @tanstack/react-store | `store.state` readable outside React (GPU render loop). Framework-agnostic core. No provider wrapping |
+| Undo/redo | Custom history middleware on TanStack Store | State history stack for pole/zero manipulations via `store.subscribe()` snapshots |
 
 ### Quality & DX
 
@@ -151,14 +151,14 @@ University students taking a first or second course in complex analysis. They op
 
 ### The Critical Principle: Decouple GPU from React
 
-React owns the DOM — the toolbar, formula bar, control panels, command palette. The WebGL2 renderer runs in its own `requestAnimationFrame` loop, entirely outside React's reconciliation cycle. Communication flows through Zustand and refs:
+React owns the DOM — the toolbar, formula bar, control panels, command palette. The WebGL2 renderer runs in its own `requestAnimationFrame` loop, entirely outside React's reconciliation cycle. Communication flows through TanStack Store and refs:
 
 ```
 React Component Tree                    Imperative WebGL Layer
 ┌──────────────────────────┐            ┌──────────────────────────────┐
 │ App                      │            │ DomainColoringRenderer       │
 │  ├─ Toolbar              │            │  - canvas ref                │
-│  │  ├─ PoleZeroToolbox   │──zustand──→│  - compileShader()           │
+│  │  ├─ PoleZeroToolbox   │──store───→│  - compileShader()           │
 │  │  ├─ ViewControls      │            │  - updateUniforms()          │
 │  ├─ FormulaBar (KaTeX)   │            │  - render() @ 60fps via rAF │
 │  ├─ CoordinateReadout    │            │  - handleResize()            │
@@ -174,8 +174,8 @@ React Component Tree                    Imperative WebGL Layer
 ### Rules
 
 - **Never pass WebGL objects as React state.** Use `useRef` for the renderer instance, shader programs, uniform locations, and mutable GPU state
-- **Never trigger React re-renders from the render loop.** The rAF loop reads from `useStore.getState()` each frame — Zustand's vanilla API, no hooks, no subscriptions
-- **React UI components** subscribe to Zustand via selectors (`useStore(s => s.poles)`) — these re-render only when their specific slice changes
+- **Never trigger React re-renders from the render loop.** The rAF loop reads from `explorerStore.state` each frame — TanStack Store's vanilla API, no hooks, no subscriptions
+- **React UI components** subscribe to TanStack Store via `useStore(explorerStore, s => s.poles)` from `@tanstack/react-store` — these re-render only when their specific slice changes
 - **Uniform updates** (pole/zero positions during drag) cost one `gl.uniform2fv()` call per frame — effectively free
 - **Shader recompilation** happens only on structural function changes (switching from rational to exponential, or editing the expression text field). Never during drag operations
 
@@ -307,7 +307,6 @@ This keeps the first-run experience legible, gives immediate visual payoff, and 
   2. **Placed** — live poles and zeros currently in the function
   3. **Examples** — small curated starter states
   4. **Controls** — gain and mode-specific controls
-- **Collapsibility**:
 - **Docked vs floating behavior**:
   - The **docked rail** is the default and the canonical layout used for onboarding, responsive behavior, and screenshots/docs
   - Users may switch the rail into a **floating tool panel** mode for maximum canvas space
@@ -724,7 +723,7 @@ Use a **grid-based mesh** approach:
 ```
 
 The `SurfaceMesh` component:
-- Reads poles/zeros from Zustand on each `useFrame`
+- Reads poles/zeros from TanStack Store on each `useFrame`
 - Recomputes the mesh geometry when poles/zeros change (throttled to 30fps during drag, full resolution on release)
 - Uses `THREE.ShaderMaterial` with a vertex shader that reads height from a data texture (for GPU-side evaluation) OR computes on CPU with complex.js and uploads as vertex positions
 
@@ -744,7 +743,7 @@ The `SurfaceMesh` component:
 Use `@use-gesture/react`'s `useDrag` hook on the toolbox prototype cards. On drag start, create a floating preview element (pole × or zero ○) that follows the cursor. On drop over the canvas:
 
 1. Convert pixel coordinates to complex plane coordinates using the current pan/zoom transform
-2. Dispatch `addPole(z)` or `addZero(z)` to Zustand store
+2. Dispatch `addPole(z)` or `addZero(z)` to TanStack Store
 3. The WebGL render loop picks up the new uniform values on the next frame
 
 ### Drag on Canvas to Reposition
@@ -752,7 +751,7 @@ Use `@use-gesture/react`'s `useDrag` hook on the toolbox prototype cards. On dra
 Attach `useDrag` to each pole/zero marker rendered as an SVG overlay on the canvas (not inside WebGL — this keeps hit testing simple and accessible):
 
 1. **Hit test**: on pointerdown, find the nearest pole/zero within 20px screen distance
-2. **During drag**: update the pole/zero position in Zustand on every pointermove. The render loop reads the updated uniform array each frame
+2. **During drag**: update the pole/zero position in TanStack Store on every pointermove. The render loop reads the updated uniform array each frame
 3. **On release**: snap to grid if snap mode is enabled (`Math.round(x * 4) / 4` for quarter-integer grid)
 
 ### Conjugate Pair Enforcement
@@ -794,7 +793,7 @@ When a pole/zero is off the real axis (|Im| > 0.01), automatically create and ma
 
 ### KaTeX Rendering
 
-The formula bar displays the current function using KaTeX, rebuilt from the Zustand store on every relevant state change:
+The formula bar displays the current function using KaTeX, rebuilt from the TanStack Store on every relevant state change:
 
 ```typescript
 function buildFactoredLaTeX(zeros: Complex[], poles: Complex[], gain: number): string {
@@ -831,78 +830,81 @@ The math.js `node.toTex()` method converts the AST directly to LaTeX for KaTeX r
 
 ## 10. State Management Architecture
 
-### Zustand Store Shape
+### TanStack Store Shape
 
 ```typescript
-interface ExplorerStore {
+interface ExplorerState {
   // Function definition
   mode: 'poles-zeros' | 'expression';
   poles: Complex[];
   zeros: Complex[];
   gain: number;
   expression: string;  // Raw text input (expression mode)
-  
+
   // Viewport
   center: { re: number; im: number };
   zoom: number;
-  
+
   // View
   viewMode: '2d' | '3d';
-  
+
   // Display options
   showModContours: boolean;
   showPhaseContours: boolean;
   showGrid: boolean;
   contourDensity: number;
-  
+
   // Interaction state
   selectedId: string | null;
   hoveredId: string | null;
   cursorZ: { re: number; im: number } | null;
-  
-  // Actions
-  addPole: (z: Complex) => void;
-  addZero: (z: Complex) => void;
-  removeSingularity: (id: string) => void;
-  moveSingularity: (id: string, z: Complex) => void;
-  setExpression: (expr: string) => void;
-  setCenter: (c: { re: number; im: number }) => void;
-  setZoom: (z: number) => void;
-  reset: () => void;
-  loadPreset: (preset: Preset) => void;
 }
 ```
 
 Each pole/zero gets a unique `id` (nanoid) and a `type` field ('pole' | 'zero'). Conjugate pairs share a `pairId`.
 
-### Zustand Middleware Stack
+### TanStack Store Setup
 
 ```typescript
-import { create } from 'zustand';
-import { temporal } from 'zundo';
-import { persist } from 'zustand/middleware';
+import { Store } from '@tanstack/store';
 
-const useStore = create<ExplorerStore>()(
-  temporal(
-    persist(
-      (set, get) => ({
-        // ... state and actions
-      }),
-      { name: 'complex-explorer', partialize: (state) => ({ /* only serialize function definition + viewport */ }) }
-    ),
-    { limit: 50 }  // 50-step undo history
-  )
-);
+const explorerStore = new Store<ExplorerState>(initialState);
+
+// Actions are functions that call store.setState()
+function addPole(z: Complex) {
+  explorerStore.setState((prev) => ({
+    ...prev,
+    poles: [...prev.poles, { id: nanoid(), type: 'pole', ...z }],
+  }));
+}
+
+// Undo/redo via history middleware
+const history = createHistoryMiddleware(explorerStore, { limit: 50 });
+
+// Persistence via subscribe + localStorage
+explorerStore.subscribe(() => {
+  const { poles, zeros, gain, center, zoom, mode, expression } = explorerStore.state;
+  localStorage.setItem('complex-explorer', JSON.stringify({ poles, zeros, gain, center, zoom, mode, expression }));
+});
+```
+
+### React Components Use @tanstack/react-store
+
+```typescript
+import { useStore } from '@tanstack/react-store';
+
+// Selector-based subscriptions — re-renders only when poles change
+const poles = useStore(explorerStore, (s) => s.poles);
 ```
 
 ### WebGL Render Loop Reads State Without React
 
 ```typescript
 class DomainColoringRenderer {
-  private store = useStore;  // Reference to the Zustand store
-  
+  private store = explorerStore;  // Reference to the TanStack Store
+
   render = () => {
-    const state = this.store.getState();  // No React subscription!
+    const state = this.store.state;  // Direct property access — no React subscription!
     
     // Update uniforms from state
     gl.uniform1i(this.uniforms.numPoles, state.poles.length);
@@ -1002,7 +1004,7 @@ canvas.addEventListener('webglcontextrestored', () => {
 
 | Chunk | Target | Notes |
 |-------|--------|-------|
-| Initial JS | <150KB gzipped | React + Zustand + core UI |
+| Initial JS | <150KB gzipped | React + TanStack Store + core UI |
 | WebGL renderer | <20KB gzipped | Custom, no framework |
 | Three.js (3D view) | <100KB gzipped | Code-split, lazy-loaded on "3D" toggle |
 | KaTeX | ~90KB gzipped | CSS + JS + fonts. Loaded eagerly (formula bar is always visible) |
@@ -1061,7 +1063,7 @@ complex-explorer/
 │   │   └── expression-template.frag   # Template for dynamic expression compilation
 │   │
 │   ├── store/
-│   │   ├── explorer-store.ts          # Zustand store definition
+│   │   ├── explorer-store.ts          # TanStack Store definition
 │   │   ├── presets.ts                 # Curated preset functions
 │   │   └── url-state.ts              # URL hash encoding/decoding
 │   │
@@ -1110,7 +1112,7 @@ import glsl from 'vite-plugin-glsl';
 export default defineConfig({
   plugins: [
     react(),
-    vike({ prerender: false }),  // SPA mode
+    vike(),  // SPA mode configured via +config.ts (ssr: false)
     glsl({
       include: ['**/*.glsl', '**/*.vert', '**/*.frag'],
       warnDuplicatedImports: true,
@@ -1143,7 +1145,7 @@ export default defineConfig({
   "build": "vite build",
   "lint": "biome check src/",
   "lint:fix": "biome check --write src/",
-  "lint:typecheck": "tsgo --noEmit",
+  "lint:typecheck": "tsgo --noEmit || tsc --noEmit",
   "lint:duplicates": "jscpd src/ --threshold 5",
   "test": "vitest",
   "test:e2e": "playwright test"
@@ -1216,7 +1218,7 @@ Dragging is the signature interaction, but it cannot be the only first-class int
 2. Create `DomainColoringRenderer` class with hardcoded `f(z) = z` shader
 3. Wire up canvas with `useRef`, init/destroy renderer in `useEffect`
 4. Add pan/zoom via d3-zoom, mapped to shader uniforms
-5. Create Zustand store with poles/zeros arrays
+5. Create TanStack Store with poles/zeros arrays
 6. Implement uniform-array shader (the main fragment shader above)
 7. Build Toolbox with draggable pole/zero prototypes
 8. Build MarkersOverlay (SVG layer for pole/zero markers)
@@ -1271,7 +1273,7 @@ Before presenting any output, run these checks:
 ### Technical Checks
 
 - [ ] No React state holds WebGL objects
-- [ ] Render loop reads Zustand via `getState()`, never via hooks
+- [ ] Render loop reads TanStack Store via `store.state`, never via hooks
 - [ ] Shader recompilation never happens during drag operations
 - [ ] Canvas handles context loss gracefully
 - [ ] All shadcn components use named Lucide icon imports
@@ -1322,12 +1324,12 @@ Before presenting any output, run these checks:
 ### Do
 
 - Use **Node 24** and **pnpm** for all scaffold, install, script, and CI examples
-- Start with the WebGL2 renderer and Zustand store — the core render loop must work before any UI
+- Start with the WebGL2 renderer and TanStack Store — the core render loop must work before any UI
 - Keep the renderer class fully imperative — no React hooks inside it
 - Use `vite-plugin-glsl` `#include` for modular shader code
 - Test on a real canvas early — don't build the full UI before confirming shaders compile
 - Use `@use-gesture/react` for all pointer interactions on the canvas
-- Implement conjugate pair logic as a Zustand middleware or action, not in the UI layer
+- Implement conjugate pair logic as a TanStack Store action, not in the UI layer
 - Code-split Three.js behind `React.lazy()` with a loading fallback
 
 ### Don't
@@ -1336,7 +1338,7 @@ Before presenting any output, run these checks:
 - Don't use `react-three-fiber` for the 2D domain coloring view — it's unnecessary overhead for a single fullscreen quad
 - Don't store the `WebGLRenderingContext` or shader programs in React state
 - Don't recompile shaders on every drag frame — uniforms are the mechanism for position updates
-- Don't use `localStorage` in artifacts — use React state and Zustand
+- Don't use `localStorage` directly in components — use React state and TanStack Store with persist middleware
 - Don't import `*` from lucide-react or three — use named imports
 - Don't use dnd-kit or react-dnd — they're DOM-oriented, not canvas-aware
 - Don't skip the empty state design — "No poles or zeros" must be a warm, actionable UI, not a blank canvas with no guidance
@@ -1350,7 +1352,7 @@ Before presenting any output, run these checks:
 | Eng Review | `/plan-eng-review` | Architecture & tests (required) | 1 | CLEAR | 4 issues, 0 critical gaps |
 | Design Review | `/plan-design-review` | UI/UX gaps | 1 | CLEAR | score: 6/10 → 9/10, 7 decisions |
 
-- **CODEX:** 14-point challenge. Key fixes: History API undo replaced with in-memory snapshots, CPU/GPU correctness harness added, expression mode stubs removed from initial store.
+- **CODEX:** 14-point challenge. Key fixes: History API undo replaced with in-memory snapshots via TanStack Store subscribe, CPU/GPU correctness harness added, expression mode stubs removed from initial store.
 - **CROSS-MODEL:** Codex disagreed on undo approach (History API), product focus (control systems vs pure math). Undo concern was correct and actioned. Product focus is intentional (built for Carl).
 - **UNRESOLVED:** 0
 - **VERDICT:** CEO + ENG + DESIGN CLEARED — ready to implement.
