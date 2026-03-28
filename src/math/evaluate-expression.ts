@@ -27,7 +27,9 @@ export function createExpressionEvaluator(
 					arg: Math.atan2(wIm, wRe),
 				};
 			} catch {
-				return { mag: 0, arg: 0 };
+				// Signal evaluation failure (e.g. division by zero at a pole)
+				// with Infinity so the renderer shows a singularity, not a fake zero
+				return { mag: Number.POSITIVE_INFINITY, arg: 0 };
 			}
 		};
 	} catch {

@@ -200,8 +200,16 @@ export function setMode(mode: "poles-zeros" | "expression"): void {
 					poles: buildWithConjugates("pole", extracted.poles, prev.enforceConjugates),
 					zeros: buildWithConjugates("zero", extracted.zeros, prev.enforceConjugates),
 					gain: extracted.gain,
+					expressionError: null,
 				};
 			}
+			// Extraction failed — preserve existing poles/zeros and warn
+			return {
+				...prev,
+				mode,
+				expressionError:
+					"Expression could not be converted to poles/zeros. Previous configuration preserved.",
+			};
 		}
 		return { ...prev, mode };
 	});

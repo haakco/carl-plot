@@ -168,7 +168,11 @@ export function extractRootsFromExpression(expression: string): ExtractedRoots |
 	let tree: AstNode;
 	try {
 		tree = parse(expression) as unknown as AstNode;
-	} catch {
+	} catch (e) {
+		// SyntaxError is expected for invalid user input; other errors may indicate bugs
+		if (!(e instanceof SyntaxError)) {
+			console.warn("Unexpected error parsing expression for root extraction:", e);
+		}
 		return null;
 	}
 
