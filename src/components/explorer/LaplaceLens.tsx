@@ -45,16 +45,17 @@ export function LaplaceLens() {
 		return { magnitude, phase, samples };
 	}, [cursorZ, poles, zeros, gain]);
 
-	if (!data) return null;
-
-	// Build sparkline path
-	const maxY = Math.max(1e-6, ...data.samples.map((s) => Math.abs(s.y)));
-	const sparkPath = data.samples
-		.map((pt, i) => {
-			const sy = SPARK_H / 2 - (pt.y / maxY) * (SPARK_H / 2 - 2);
-			return `${i === 0 ? "M" : "L"}${pt.x.toFixed(1)},${sy.toFixed(1)}`;
-		})
-		.join("");
+	// Build sparkline path from data (empty string when no data)
+	let sparkPath = "";
+	if (data) {
+		const maxY = Math.max(1e-6, ...data.samples.map((s) => Math.abs(s.y)));
+		sparkPath = data.samples
+			.map((pt, i) => {
+				const sy = SPARK_H / 2 - (pt.y / maxY) * (SPARK_H / 2 - 2);
+				return `${i === 0 ? "M" : "L"}${pt.x.toFixed(1)},${sy.toFixed(1)}`;
+			})
+			.join("");
+	}
 
 	return (
 		<PanelChrome title="Laplace lens">
@@ -63,13 +64,13 @@ export function LaplaceLens() {
 					<span className="text-muted-foreground">
 						|H| ={" "}
 						<span className="font-mono tabular-nums text-foreground">
-							{data.magnitude.toFixed(3)}
+							{data ? data.magnitude.toFixed(3) : "—"}
 						</span>
 					</span>
 					<span className="text-muted-foreground">
 						∠H ={" "}
 						<span className="font-mono tabular-nums text-foreground">
-							{((data.phase * 180) / Math.PI).toFixed(1)}°
+							{data ? `${((data.phase * 180) / Math.PI).toFixed(1)}°` : "—"}
 						</span>
 					</span>
 				</div>
@@ -90,7 +91,9 @@ export function LaplaceLens() {
 						stroke="oklch(0.25 0 0)"
 						strokeWidth={0.5}
 					/>
-					<path d={sparkPath} fill="none" stroke="oklch(0.7 0.12 250)" strokeWidth={1} />
+					{sparkPath && (
+						<path d={sparkPath} fill="none" stroke="oklch(0.7 0.12 250)" strokeWidth={1} />
+					)}
 				</svg>
 			</div>
 		</PanelChrome>

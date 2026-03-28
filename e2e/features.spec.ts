@@ -91,9 +91,7 @@ test.describe("Complex Explorer - Feature Tests", () => {
 		// Check the category tab buttons specifically
 		await expect(page.getByRole("dialog").getByRole("button", { name: "Basics" })).toBeVisible();
 		await expect(page.getByRole("dialog").getByRole("button", { name: "Filters" })).toBeVisible();
-		await expect(
-			page.getByRole("dialog").getByRole("button", { name: "Controls" }),
-		).toBeVisible();
+		await expect(page.getByRole("dialog").getByRole("button", { name: "Controls" })).toBeVisible();
 	});
 
 	// ─── Expression Mode ──────────────────────────────────────────
@@ -214,16 +212,17 @@ test.describe("Complex Explorer - Feature Tests", () => {
 
 	// ─── Laplace Lens ─────────────────────────────────────────────
 
-	test("laplace lens appears when cursor moves over canvas", async ({ page }) => {
+	test("laplace lens is always visible and updates when cursor moves over canvas", async ({
+		page,
+	}) => {
 		await openAnalysisPanel(page);
-		await expect(page.getByText("Laplace lens")).not.toBeVisible({ timeout: 1000 });
+		// Laplace lens is always rendered (shows "—" when no cursor data)
+		await expect(page.getByText("Laplace lens")).toBeVisible({ timeout: 3000 });
+		await expect(page.locator('[aria-label="Output waveform at cursor frequency"]')).toBeVisible();
 
+		// Move cursor over canvas — values should update from "—" to real numbers
 		await moveMouseToCanvasPoint(page, 0.6, 0.4);
-
-		await expect(page.getByText("Laplace lens")).toBeVisible({ timeout: 5000 });
-		await expect(page.locator('[aria-label="Output waveform at cursor frequency"]')).toBeVisible({
-			timeout: 3000,
-		});
+		await expect(page.getByText(/\|H\| = \d/)).toBeVisible({ timeout: 5000 });
 	});
 
 	// ─── Gain Controls ────────────────────────────────────────────
