@@ -59,10 +59,10 @@ export function CommandMenu() {
 								<CommandItem onSelect={() => runAndClose(resetView)} shortcut="Ctrl+0">
 									Reset view
 								</CommandItem>
-								<CommandItem onSelect={() => runAndClose(() => setViewMode("2d"))}>
+								<CommandItem onSelect={() => runAndClose(() => setViewMode("2d"))} shortcut="2">
 									Switch to 2D
 								</CommandItem>
-								<CommandItem onSelect={() => runAndClose(() => setViewMode("3d"))}>
+								<CommandItem onSelect={() => runAndClose(() => setViewMode("3d"))} shortcut="3">
 									Switch to 3D
 								</CommandItem>
 							</Command.Group>
@@ -73,17 +73,19 @@ export function CommandMenu() {
 								heading="Display"
 								className="px-1 pb-1 text-[11px] font-medium text-muted-foreground"
 							>
-								<CommandItem onSelect={() => runAndClose(toggleModContours)}>
+								<CommandItem onSelect={() => runAndClose(toggleModContours)} shortcut="C">
 									Toggle contour lines
 								</CommandItem>
-								<CommandItem onSelect={() => runAndClose(toggleGrid)}>Toggle grid</CommandItem>
-								<CommandItem onSelect={() => runAndClose(togglePhaseContours)}>
+								<CommandItem onSelect={() => runAndClose(toggleGrid)} shortcut="G">
+									Toggle grid
+								</CommandItem>
+								<CommandItem onSelect={() => runAndClose(togglePhaseContours)} shortcut="P">
 									Toggle phase contours
 								</CommandItem>
-								<CommandItem onSelect={() => runAndClose(toggleShowAllResidues)}>
+								<CommandItem onSelect={() => runAndClose(toggleShowAllResidues)} shortcut="R">
 									Toggle residue labels
 								</CommandItem>
-								<CommandItem onSelect={() => runAndClose(toggleConformalGrid)}>
+								<CommandItem onSelect={() => runAndClose(toggleConformalGrid)} shortcut="F">
 									Toggle conformal grid
 								</CommandItem>
 							</Command.Group>
@@ -124,7 +126,7 @@ export function CommandMenu() {
 								heading="Export"
 								className="px-1 pb-1 text-[11px] font-medium text-muted-foreground"
 							>
-								<CommandItem onSelect={() => runAndClose(exportCanvasToPng)}>
+								<CommandItem onSelect={() => runAndClose(exportCanvasToPng)} shortcut="Ctrl+E">
 									Export as PNG
 								</CommandItem>
 							</Command.Group>
@@ -135,7 +137,7 @@ export function CommandMenu() {
 								heading="Edit"
 								className="px-1 pb-1 text-[11px] font-medium text-muted-foreground"
 							>
-								<CommandItem onSelect={() => runAndClose(clearAll)}>
+								<CommandItem onSelect={() => runAndClose(clearAll)} shortcut="Ctrl+Shift+X">
 									Clear all poles/zeros
 								</CommandItem>
 								<CommandItem onSelect={() => runAndClose(undo)} shortcut="Ctrl+Z">

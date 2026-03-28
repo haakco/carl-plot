@@ -6,13 +6,21 @@ import { announceToScreenReader, subscribeAnnouncer } from "@/lib/a11y-announce"
 import { moveWithConjugate } from "@/lib/singularity-helpers";
 import { decodeStateFromUrl, encodeStateToUrl } from "@/lib/url-state";
 import {
+	clearAll,
 	explorerStore,
 	redo,
 	removeSingularity,
 	resetView,
 	setSelectedId,
+	setViewMode,
+	toggleConformalGrid,
+	toggleGrid,
+	toggleModContours,
+	togglePhaseContours,
+	toggleShowAllResidues,
 	undo,
 } from "@/store/explorer-store";
+import { exportCanvasToPng } from "@/lib/export-image";
 import { AnalysisPanel } from "./AnalysisPanel";
 import { Canvas2D } from "./Canvas2D";
 import { Canvas3D } from "./Canvas3D";
@@ -100,6 +108,27 @@ export function ExplorerLayout() {
 	useHotkeys("mod+0", (e) => {
 		e.preventDefault();
 		resetView();
+	});
+
+	// Display toggles (single-key — ignored when input is focused)
+	useHotkeys("g", () => toggleGrid());
+	useHotkeys("c", () => toggleModContours());
+	useHotkeys("p", () => togglePhaseContours());
+	useHotkeys("r", () => toggleShowAllResidues());
+	useHotkeys("f", () => toggleConformalGrid());
+
+	// View mode
+	useHotkeys("2", () => setViewMode("2d"));
+	useHotkeys("3", () => setViewMode("3d"));
+
+	// Actions
+	useHotkeys("mod+e", (e) => {
+		e.preventDefault();
+		exportCanvasToPng();
+	});
+	useHotkeys("mod+shift+x", (e) => {
+		e.preventDefault();
+		clearAll();
 	});
 
 	useEffect(() => {
