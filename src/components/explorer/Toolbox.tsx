@@ -5,15 +5,16 @@ import { useToolboxDrag } from "@/hooks/useToolboxDrag";
 import { announceToScreenReader } from "@/lib/a11y-announce";
 import { formatComplex } from "@/math/complex";
 import { computeAllResidues, formatResiduePlain } from "@/math/residue";
+import { applyExplorerExample, examples } from "@/store/examples";
 import {
 	addPole,
 	addZero,
 	explorerStore,
-	loadPreset,
 	setGain,
 	toggleShowAllResidues,
 } from "@/store/explorer-store";
-import { presets } from "@/store/presets";
+import type { PresetCategory } from "@/store/presets";
+import { ExampleThumbnail } from "./ExampleThumbnail";
 import { GainSweep } from "./GainSweep";
 import { ImpulseSparkline } from "./ImpulseSparkline";
 import { LaplaceLens } from "./LaplaceLens";
@@ -79,13 +80,13 @@ function CreateSection() {
 	);
 }
 
-const CATEGORY_LABELS: Record<string, string> = {
+const CATEGORY_LABELS: Record<PresetCategory, string> = {
 	basics: "Basics",
 	filters: "Filters",
 	controls: "Controls",
 };
 
-const CATEGORY_COLORS: Record<string, string> = {
+const CATEGORY_COLORS: Record<PresetCategory, string> = {
 	basics: "oklch(0.7 0.12 250)",
 	filters: "oklch(0.7 0.12 145)",
 	controls: "oklch(0.7 0.12 35)",
@@ -93,11 +94,11 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 function ExamplesSection() {
 	const grouped = useMemo(() => {
-		const map = new Map<string, typeof presets>();
-		for (const preset of presets) {
-			const list = map.get(preset.category) ?? [];
-			list.push(preset);
-			map.set(preset.category, list);
+		const map = new Map<PresetCategory, typeof examples>();
+		for (const example of examples) {
+			const list = map.get(example.category) ?? [];
+			list.push(example);
+			map.set(example.category, list);
 		}
 		return map;
 	}, []);
@@ -106,29 +107,33 @@ function ExamplesSection() {
 		<section>
 			<SectionLabel>Examples</SectionLabel>
 			<div className="flex flex-col gap-2">
-				{[...grouped.entries()].map(([category, categoryPresets]) => (
-					<div key={category} className="flex flex-col gap-0.5">
+				{[...grouped.entries()].map(([category, categoryExamples]) => (
+					<div key={category} className="flex flex-col gap-1.5">
 						<span
 							className="text-[10px] font-medium uppercase tracking-wider"
 							style={{ color: CATEGORY_COLORS[category] }}
 						>
-							{CATEGORY_LABELS[category] ?? category}
+							{CATEGORY_LABELS[category]}
 						</span>
-						{categoryPresets.map((preset) => (
-							<button
-								key={preset.name}
-								type="button"
-								onClick={() => loadPreset(preset)}
-								className="group rounded-sm px-1.5 py-1 text-left transition-colors hover:bg-secondary focus-visible:ring-2 focus-visible:ring-ring"
-							>
-								<span className="block text-[12px] text-muted-foreground group-hover:text-foreground">
-									{preset.name}
-								</span>
-								<span className="block text-[10px] leading-tight text-muted-foreground/60">
-									{preset.description}
-								</span>
-							</button>
-						))}
+						<div className="grid grid-cols-1 gap-2">
+							{categoryExamples.map((example) => (
+								<button
+									key={example.name}
+									type="button"
+									onClick={() => applyExplorerExample(example)}
+									aria-label={example.name}
+									className="group rounded-md border border-border/70 bg-card/60 p-2 text-left transition-colors hover:border-border hover:bg-secondary/40 focus-visible:ring-2 focus-visible:ring-ring"
+								>
+									<ExampleThumbnail example={example} />
+									<span className="mt-2 block text-[12px] font-medium text-foreground">
+										{example.name}
+									</span>
+									<span className="block text-[10px] leading-tight text-muted-foreground/70">
+										{example.description}
+									</span>
+								</button>
+							))}
+						</div>
 					</div>
 				))}
 			</div>

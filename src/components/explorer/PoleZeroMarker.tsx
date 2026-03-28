@@ -56,6 +56,7 @@ export function PoleZeroMarker({
 			hasDraggedRef.current = false;
 			setSelectedId(itemId);
 			clearGhostTrail();
+			pushGhostPoint(re, im);
 
 			const svgRect = svg.getBoundingClientRect();
 
@@ -97,7 +98,7 @@ export function PoleZeroMarker({
 			window.addEventListener("pointermove", onPointerMove);
 			window.addEventListener("pointerup", onPointerUp);
 		},
-		[itemId, canvasWidth, canvasHeight],
+		[itemId, canvasWidth, canvasHeight, re, im],
 	);
 
 	const label = `${type === "pole" ? "Pole" : "Zero"} at ${formatComplex({ id: itemId, type, re, im })}`;

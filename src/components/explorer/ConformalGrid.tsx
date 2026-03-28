@@ -1,6 +1,7 @@
 import { useStore } from "@tanstack/react-store";
 import { useMemo } from "react";
 import { complexToPixel } from "@/lib/coordinates";
+import { getViewportBounds } from "@/lib/viewport";
 import { evaluateRational } from "@/math/evaluate-rational";
 import { explorerStore } from "@/store/explorer-store";
 
@@ -16,24 +17,22 @@ export function buildGridLines(
 	poles: { re: number; im: number }[],
 	zeros: { re: number; im: number }[],
 	gain: number,
-	center: { re: number; im: number },
-	zoom: number,
+	bounds: { reMin: number; reMax: number; imMin: number; imMax: number },
 ): { horizontal: { re: number; im: number }[][]; vertical: { re: number; im: number }[][] } {
-	// Adapt grid extent to current viewport
-	const halfExtent = Math.max(1, 3 / zoom);
-	const step = (2 * halfExtent) / (GRID_LINES - 1);
+	const stepRe = (bounds.reMax - bounds.reMin) / (GRID_LINES - 1);
+	const stepIm = (bounds.imMax - bounds.imMin) / (GRID_LINES - 1);
 	const horizontal: { re: number; im: number }[][] = [];
 	const vertical: { re: number; im: number }[][] = [];
 
 	for (let i = 0; i < GRID_LINES; i++) {
-		const imCoord = center.im - halfExtent + i * step;
-		const reCoord = center.re - halfExtent + i * step;
+		const imCoord = bounds.imMin + i * stepIm;
+		const reCoord = bounds.reMin + i * stepRe;
 		const hLine: { re: number; im: number }[] = [];
 		const vLine: { re: number; im: number }[] = [];
 
 		for (let j = 0; j < SAMPLES_PER_LINE; j++) {
-			const tRe = center.re - halfExtent + (j / (SAMPLES_PER_LINE - 1)) * 2 * halfExtent;
-			const tIm = center.im - halfExtent + (j / (SAMPLES_PER_LINE - 1)) * 2 * halfExtent;
+			const tRe = bounds.reMin + (j / (SAMPLES_PER_LINE - 1)) * (bounds.reMax - bounds.reMin);
+			const tIm = bounds.imMin + (j / (SAMPLES_PER_LINE - 1)) * (bounds.imMax - bounds.imMin);
 
 			const hResult = evaluateRational({ re: tRe, im: imCoord }, poles, zeros, gain);
 			if (Number.isFinite(hResult.re) && Number.isFinite(hResult.im)) {
@@ -87,8 +86,8 @@ export function ConformalGrid({ width, height }: ConformalGridProps) {
 
 	const gridLines = useMemo(() => {
 		if (!show || mode !== "poles-zeros") return null;
-		return buildGridLines(poles, zeros, gain, center, zoom);
-	}, [show, mode, poles, zeros, gain, center, zoom]);
+		return buildGridLines(poles, zeros, gain, getViewportBounds(width, height, center, zoom));
+	}, [show, mode, poles, zeros, gain, center, zoom, width, height]);
 
 	if (!show || !gridLines) return null;
 

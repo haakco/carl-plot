@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createComplex } from "./complex";
+import { createExpressionValueEvaluator } from "./evaluate-expression";
 import { evaluateRational } from "./evaluate-rational";
 import { generateSurfaceMesh, getViewportBounds } from "./surface-mesh";
 
@@ -11,6 +12,7 @@ import { generateSurfaceMesh, getViewportBounds } from "./surface-mesh";
  *   - z (identity)
  *   - 1/z (single pole)
  *   - (z-1)/(z+1) (pole + zero)
+ *   - sin(z)
  */
 
 const CANVAS_W = 800;
@@ -46,7 +48,7 @@ describe("2D/3D parity", () => {
 
 	describe("canonical function: f(z) = z", () => {
 		const poles: ReturnType<typeof createComplex>[] = [];
-		const zeros: ReturnType<typeof createComplex>[] = [];
+		const zeros = [createComplex("zero", 0, 0)];
 		const gain = 1;
 
 		it("evaluateRational at z=1+0i returns 1+0i", () => {
@@ -56,23 +58,27 @@ describe("2D/3D parity", () => {
 		});
 
 		it("3D mesh produces matching values at sample points", () => {
+			const wideZoom = 0.5;
 			const mesh = generateSurfaceMesh(
 				poles,
 				zeros,
 				gain,
 				CENTER,
-				ZOOM,
+				wideZoom,
 				16,
 				undefined,
 				CANVAS_W,
 				CANVAS_H,
 			);
-			// With no poles/zeros, f(z) = gain = 1 everywhere
-			// mag = 1, so height = (2/pi)*atan(1) * 5 = (2/pi)*(pi/4)*5 = 2.5
-			const expectedHeight = (2 / Math.PI) * Math.atan(1) * 5;
-			// Check interior vertex (avoid edge effects)
-			const idx = 8 * 17 + 8; // middle of 16x16 grid
+			const bounds = getViewportBounds(CANVAS_W, CANVAS_H, CENTER, wideZoom);
+			const res = 16;
+			const gridSize = res + 1;
+			const point = { re: 0.5, im: 0 };
+			const pointI = Math.round(((point.re - bounds.reMin) / (bounds.reMax - bounds.reMin)) * res);
+			const pointJ = Math.round(((point.im - bounds.imMin) / (bounds.imMax - bounds.imMin)) * res);
+			const idx = pointJ * gridSize + pointI;
 			const height = mesh.positions[idx * 3 + 1];
+			const expectedHeight = (2 / Math.PI) * Math.atan(0.5) * 5;
 			expect(height).toBeCloseTo(expectedHeight, 1);
 		});
 	});
@@ -163,6 +169,68 @@ describe("2D/3D parity", () => {
 
 			// Height near the zero should be lower than near the pole
 			expect(heightNearZero).toBeLessThan(heightNearPole);
+		});
+	});
+
+	describe("canonical function: f(z) = sin(z)", () => {
+		const evaluate = createExpressionValueEvaluator("sin(z)");
+		const surfaceEval = createExpressionValueEvaluator("sin(z)");
+
+		it("expression evaluator matches known probe values", () => {
+			expect(evaluate).not.toBeNull();
+			if (!evaluate) return;
+
+			const atOrigin = evaluate(0, 0);
+			const atImaginaryUnit = evaluate(0, 1);
+
+			expect(atOrigin).not.toBeNull();
+			expect(atImaginaryUnit).not.toBeNull();
+			if (!atOrigin || !atImaginaryUnit) return;
+
+			expect(atOrigin.re).toBeCloseTo(0, 10);
+			expect(atOrigin.im).toBeCloseTo(0, 10);
+			expect(atImaginaryUnit.re).toBeCloseTo(0, 10);
+			expect(atImaginaryUnit.im).toBeCloseTo(Math.sinh(1), 8);
+		});
+
+		it("3D mesh height matches the expression evaluator near z = i", () => {
+			expect(surfaceEval).not.toBeNull();
+			if (!surfaceEval) return;
+			const wideZoom = 0.4;
+
+			const customEval = (re: number, im: number) => {
+				const value = surfaceEval(re, im);
+				if (!value) {
+					return { mag: Number.POSITIVE_INFINITY, arg: 0 };
+				}
+				return { mag: value.mag, arg: value.arg };
+			};
+
+			const mesh = generateSurfaceMesh(
+				[],
+				[],
+				1,
+				CENTER,
+				wideZoom,
+				64,
+				customEval,
+				CANVAS_W,
+				CANVAS_H,
+			);
+			const bounds = getViewportBounds(CANVAS_W, CANVAS_H, CENTER, wideZoom);
+			const res = 64;
+			const gridSize = res + 1;
+			const point = { re: 0, im: 1 };
+			const pointI = Math.round(((point.re - bounds.reMin) / (bounds.reMax - bounds.reMin)) * res);
+			const pointJ = Math.round(((point.im - bounds.imMin) / (bounds.imMax - bounds.imMin)) * res);
+			const idx = pointJ * gridSize + pointI;
+			const height = mesh.positions[idx * 3 + 1];
+			const expectedValue = surfaceEval(point.re, point.im);
+			expect(expectedValue).not.toBeNull();
+			if (!expectedValue) return;
+
+			const expectedHeight = Math.min((2 / Math.PI) * Math.atan(expectedValue.mag), 1) * 5;
+			expect(height).toBeCloseTo(expectedHeight, 1);
 		});
 	});
 

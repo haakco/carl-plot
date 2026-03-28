@@ -419,6 +419,77 @@ test.describe("Complex Explorer - Feature Tests", () => {
 		await expect(page.locator('aside button[aria-label^="Remove pole"]')).toHaveCount(1);
 	});
 
+	test("canonical function commands load the expected function definitions", async ({ page }) => {
+		await runCommand(page, "Identity");
+		await expect(page.locator('aside button[aria-label^="Remove pole"]')).toHaveCount(0);
+		await expect(page.locator('aside button[aria-label^="Remove zero"]')).toHaveCount(0);
+
+		await runCommand(page, "1/z");
+		await expect(page.locator('aside button[aria-label^="Remove pole"]')).toHaveCount(1);
+		await expect(page.locator('aside button[aria-label^="Remove zero"]')).toHaveCount(0);
+
+		await runCommand(page, "z^2");
+		await expect(page.locator('aside button[aria-label^="Remove zero"]')).toHaveCount(2);
+
+		await runCommand(page, "sin(z)");
+		await expect(page.locator('input[placeholder*="expression"]')).toHaveValue("sin(z)");
+	});
+
+	test("ghost trail renders during drag and clears after the linger window", async ({ page }) => {
+		const marker = page
+			.locator(
+				'svg[aria-label="Pole and zero markers on the complex plane"] [role="button"][aria-label^="Pole at"]',
+			)
+			.first();
+		const box = await marker.boundingBox();
+		expect(box).not.toBeNull();
+		if (!box) throw new Error("Pole marker bounding box unavailable");
+
+		const startX = box.x + box.width / 2;
+		const startY = box.y + box.height / 2;
+		await marker.dispatchEvent("pointerdown", {
+			clientX: startX,
+			clientY: startY,
+			pointerId: 1,
+			button: 0,
+		});
+		for (let step = 1; step <= 4; step++) {
+			await page.evaluate(
+				({ clientX, clientY }) => {
+					window.dispatchEvent(
+						new PointerEvent("pointermove", {
+							clientX,
+							clientY,
+							pointerId: 1,
+							bubbles: true,
+						}),
+					);
+				},
+				{ clientX: startX + step * 15, clientY: startY - step * 10 },
+			);
+		}
+		await page.evaluate(
+			({ clientX, clientY }) => {
+				window.dispatchEvent(
+					new PointerEvent("pointerup", {
+						clientX,
+						clientY,
+						pointerId: 1,
+						bubbles: true,
+					}),
+				);
+			},
+			{ clientX: startX + 60, clientY: startY - 40 },
+		);
+
+		const trail = page.locator(
+			'svg[aria-label="Pole and zero markers on the complex plane"] polyline',
+		);
+		await expect(trail).toHaveCount(1, { timeout: 3000 });
+		await page.waitForTimeout(700);
+		await expect(trail).toHaveCount(0);
+	});
+
 	// ─── URL State Persistence ────────────────────────────────────
 
 	test("expression mode is preserved in URL", async ({ page }) => {

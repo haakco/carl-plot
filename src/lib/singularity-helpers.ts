@@ -1,4 +1,4 @@
-import { enforceConjugate } from "@/hooks/useConjugatePairs";
+import { enforceConjugate } from "@/lib/conjugate-pairs";
 import { explorerStore, moveSingularity } from "@/store/explorer-store";
 
 const SNAP_GRID = 4;

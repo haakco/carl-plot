@@ -42,6 +42,8 @@ const FUNCTION_MAP: Record<string, string> = {
 	cosh: "ccosh",
 };
 
+export const SUPPORTED_EXPRESSION_FUNCTIONS = Object.freeze(Object.keys(FUNCTION_MAP));
+
 const BINARY_OP_MAP: Record<string, string | null> = {
 	"+": null,
 	"-": null,

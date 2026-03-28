@@ -1,3 +1,4 @@
+import { getViewportBounds } from "@/lib/viewport";
 import type { Complex } from "./complex";
 
 const MAX_HEIGHT = 5;
@@ -73,26 +74,7 @@ function hsv2rgb(h: number, s: number, v: number): [number, number, number] {
 	}
 }
 
-/**
- * Compute the visible complex-plane bounds matching the 2D renderer's coordinate mapping:
- *   z = (pixel - 0.5*resolution) / min(resolution.x, resolution.y) / zoom + center
- */
-export function getViewportBounds(
-	canvasWidth: number,
-	canvasHeight: number,
-	center: { re: number; im: number },
-	zoom: number,
-): { reMin: number; reMax: number; imMin: number; imMax: number } {
-	const minDim = Math.min(canvasWidth, canvasHeight);
-	const halfExtentX = canvasWidth / (2 * minDim * zoom);
-	const halfExtentY = canvasHeight / (2 * minDim * zoom);
-	return {
-		reMin: center.re - halfExtentX,
-		reMax: center.re + halfExtentX,
-		imMin: center.im - halfExtentY,
-		imMax: center.im + halfExtentY,
-	};
-}
+export { getViewportBounds } from "@/lib/viewport";
 
 /**
  * Generate a mesh representing |f(z)| as a height surface over the complex plane.

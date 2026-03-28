@@ -4,6 +4,12 @@ import { useCallback, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { exportCanvasToPng } from "@/lib/export-image";
 import {
+	loadIdentityFunction,
+	loadReciprocalFunction,
+	loadSinFunction,
+	loadSquareFunction,
+} from "@/store/examples";
+import {
 	clearAll,
 	loadPreset,
 	redo,
@@ -80,6 +86,20 @@ export function CommandMenu() {
 								<CommandItem onSelect={() => runAndClose(toggleConformalGrid)}>
 									Toggle conformal grid
 								</CommandItem>
+							</Command.Group>
+
+							<Command.Separator className="mx-1 my-1 h-px bg-border" />
+
+							<Command.Group
+								heading="Functions"
+								className="px-1 pb-1 text-[11px] font-medium text-muted-foreground"
+							>
+								<CommandItem onSelect={() => runAndClose(loadIdentityFunction)}>
+									Identity
+								</CommandItem>
+								<CommandItem onSelect={() => runAndClose(loadReciprocalFunction)}>1/z</CommandItem>
+								<CommandItem onSelect={() => runAndClose(loadSquareFunction)}>z^2</CommandItem>
+								<CommandItem onSelect={() => runAndClose(loadSinFunction)}>sin(z)</CommandItem>
 							</Command.Group>
 
 							<Command.Separator className="mx-1 my-1 h-px bg-border" />

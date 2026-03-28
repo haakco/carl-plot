@@ -1,5 +1,6 @@
 import { useStore } from "@tanstack/react-store";
 import { useCallback, useState } from "react";
+import { SUPPORTED_EXPRESSION_FUNCTIONS } from "@/math/ast-to-glsl";
 import { explorerStore, setExpression } from "@/store/explorer-store";
 
 export function ExpressionInput() {
@@ -26,6 +27,10 @@ export function ExpressionInput() {
 			{expressionError && (
 				<p className="mt-0.5 truncate text-[11px] text-red-400">{expressionError}</p>
 			)}
+			<p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+				Supported: + - * / ^, z, i, e, pi, {SUPPORTED_EXPRESSION_FUNCTIONS.join(", ")}. Pole/zero
+				mode restores only factored rational forms.
+			</p>
 		</div>
 	);
 }

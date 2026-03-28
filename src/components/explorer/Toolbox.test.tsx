@@ -57,4 +57,13 @@ describe("Toolbox", () => {
 		expect(screen.queryByText("Laplace lens")).toBeNull();
 		expect(screen.queryByText("Gain sweep")).toBeNull();
 	});
+
+	it("renders thumbnail cards for pole-zero and expression examples", () => {
+		render(<Toolbox />);
+
+		expect(screen.getByRole("button", { name: /Joukowski airfoil/i })).toBeTruthy();
+		expect(screen.getByRole("button", { name: /Riemann zeta approximation/i })).toBeTruthy();
+		expect(screen.getByLabelText(/preview of Möbius transform/i)).toBeTruthy();
+		expect(screen.getByLabelText(/preview of Joukowski airfoil/i)).toBeTruthy();
+	});
 });

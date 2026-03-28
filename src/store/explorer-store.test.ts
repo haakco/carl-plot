@@ -15,8 +15,10 @@ import {
 	resetView,
 	setCenter,
 	setCursorZ,
+	setExpression,
 	setGain,
 	setGainTransient,
+	setMode,
 	setZoom,
 	toggleConformalGrid,
 	undo,
@@ -302,5 +304,36 @@ describe("toggleConformalGrid", () => {
 		expect(explorerStore.state.showConformalGrid).toBe(true);
 		toggleConformalGrid();
 		expect(explorerStore.state.showConformalGrid).toBe(false);
+	});
+});
+
+describe("setMode", () => {
+	it("extracts rational roots when leaving expression mode", () => {
+		setMode("expression");
+		setExpression("2*(z-1)/(z+3)");
+
+		setMode("poles-zeros");
+
+		expect(explorerStore.state.mode).toBe("poles-zeros");
+		expect(explorerStore.state.gain).toBe(2);
+		expect(explorerStore.state.zeros).toHaveLength(1);
+		expect(explorerStore.state.zeros[0].re).toBe(1);
+		expect(explorerStore.state.poles).toHaveLength(1);
+		expect(explorerStore.state.poles[0].re).toBe(-3);
+		expect(explorerStore.state.expressionError).toBeNull();
+	});
+
+	it("preserves the previous pole-zero system when extraction fails", () => {
+		const originalPoleIds = explorerStore.state.poles.map((pole) => pole.id);
+		const originalZeroIds = explorerStore.state.zeros.map((zero) => zero.id);
+
+		setMode("expression");
+		setExpression("sin(z)");
+		setMode("poles-zeros");
+
+		expect(explorerStore.state.mode).toBe("poles-zeros");
+		expect(explorerStore.state.poles.map((pole) => pole.id)).toEqual(originalPoleIds);
+		expect(explorerStore.state.zeros.map((zero) => zero.id)).toEqual(originalZeroIds);
+		expect(explorerStore.state.expressionError).toContain("could not be converted");
 	});
 });

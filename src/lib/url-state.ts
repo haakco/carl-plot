@@ -1,4 +1,4 @@
-import { nanoid } from "nanoid";
+import { restoreConjugatePairs } from "@/lib/conjugate-pairs";
 import type { Complex } from "@/math/complex";
 import { createComplex } from "@/math/complex";
 import { explorerStore, loadPreset } from "@/store/explorer-store";
@@ -45,21 +45,10 @@ function deserializeComplex(
 	coords: [number, number][],
 	pairIndices?: [number, number][],
 ): Complex[] {
-	const items = coords.map(([re, im]) => createComplex(type, re, im));
-
-	// Restore explicit pair links from serialized metadata
-	if (pairIndices) {
-		for (const [i, j] of pairIndices) {
-			if (i < items.length && j < items.length) {
-				const id1 = nanoid();
-				const id2 = nanoid();
-				items[i] = { ...items[i], id: id1, pairId: id2 };
-				items[j] = { ...items[j], id: id2, pairId: id1 };
-			}
-		}
-	}
-
-	return items;
+	return restoreConjugatePairs(
+		coords.map(([re, im]) => createComplex(type, re, im)),
+		pairIndices,
+	);
 }
 
 export function encodeStateToUrl(): void {

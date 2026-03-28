@@ -1,6 +1,11 @@
 import { select } from "d3-selection";
 import "d3-transition";
 import { type ZoomBehavior, zoom, zoomIdentity } from "d3-zoom";
+import {
+	pixelToComplexPoint,
+	viewportToZoomTransform,
+	zoomTransformToViewport,
+} from "@/lib/viewport";
 import { explorerStore, setCenter, setCursorZ, setZoom } from "@/store/explorer-store";
 
 export class PanZoomController {
@@ -20,14 +25,11 @@ export class PanZoomController {
 				if (this.suppressZoomEvent) return;
 
 				const { x, y, k } = event.transform;
-				const minDim = Math.min(canvas.clientWidth, canvas.clientHeight);
-
-				const centerRe = -x / (k * minDim);
-				const centerIm = y / (k * minDim);
+				const viewport = zoomTransformToViewport(x, y, k, canvas.clientWidth, canvas.clientHeight);
 
 				this.isZoomDriven = true;
-				setCenter(centerRe, centerIm);
-				setZoom(k);
+				setCenter(viewport.center.re, viewport.center.im);
+				setZoom(viewport.zoom);
 				this.isZoomDriven = false;
 			});
 
@@ -47,10 +49,12 @@ export class PanZoomController {
 	syncTransformFromStore(): void {
 		if (!this.canvas || !this.zoomBehavior) return;
 		const { center, zoom: k } = explorerStore.state;
-		const minDim = Math.min(this.canvas.clientWidth, this.canvas.clientHeight);
-
-		const x = -center.re * k * minDim;
-		const y = center.im * k * minDim;
+		const { x, y } = viewportToZoomTransform(
+			center,
+			k,
+			this.canvas.clientWidth,
+			this.canvas.clientHeight,
+		);
 		const transform = zoomIdentity.translate(x, y).scale(k);
 
 		this.suppressZoomEvent = true;
@@ -81,13 +85,10 @@ export class PanZoomController {
 		const rect = canvas.getBoundingClientRect();
 		const pixelX = event.clientX - rect.left;
 		const pixelY = event.clientY - rect.top;
-		const minDim = Math.min(rect.width, rect.height);
-		const { center, zoom: k } = explorerStore.state;
+		const { center, zoom } = explorerStore.state;
+		const point = pixelToComplexPoint(pixelX, pixelY, rect.width, rect.height, center, zoom);
 
-		const re = center.re + (pixelX - rect.width / 2) / (k * minDim);
-		const im = center.im - (pixelY - rect.height / 2) / (k * minDim);
-
-		setCursorZ({ re, im });
+		setCursorZ(point);
 	};
 
 	private handleMouseLeave = (): void => {

@@ -1,8 +1,8 @@
 # Complex Explorer — Future Features Plan
 
 **Date:** 2026-03-28
-**Status:** In review
-**Prerequisite:** Phases 1–5 are mostly complete, but audit gaps remain against the original specification in `docs/plans/complex-explorer-prompt.md`
+**Status:** Complete
+**Prerequisite:** Phases 1–5 complete. This archive records the final future-feature implementation pass and audit closure against `docs/plans/complex-explorer-prompt.md`.
 
 ---
 
@@ -295,7 +295,7 @@ This plan covers all features beyond the core 5 phases. Items are grouped into t
 
 **Problem:** Grid always covered -3 to +3 regardless of viewport. Panning or zooming made grid lines disappear.
 
-**Fix:** Grid extent now adapts to current `center` and `zoom` from store: `halfExtent = max(1, 3/zoom)`, lines centered on viewport center.
+**Fix:** Grid sampling now uses shared viewport bounds so the overlay tracks the actual visible domain instead of a synthetic square centered at the origin.
 
 ---
 
@@ -318,30 +318,36 @@ This plan covers all features beyond the core 5 phases. Items are grouped into t
   - Added `.skills/project-skills.yaml` with the HaakCo quality skills used during this audit
 - [P2] Explorer analysis panels had avoidable duplicate shell/chrome markup.
   - Extracted reusable `PanelChrome` / `PanelSurface` primitives and reused them across the small analysis widgets
+- [P1] The command palette now exposes the canonical teaching functions required by the prompt.
+  - Added explicit `Identity`, `1/z`, `z^2`, and `sin(z)` commands
+  - Added end-to-end coverage proving each command loads the expected function definition
+- [P1] The preset gallery now ships as thumbnail cards instead of plain text rows.
+  - Added reusable example metadata in `src/store/examples.ts`
+  - Added thumbnail rendering via `ExampleThumbnail.tsx`
+  - Added expression-backed cards for `Joukowski airfoil` and a `Riemann zeta approximation`
+- [P2] Expression-mode support is now explicit instead of implied.
+  - `ExpressionInput.tsx` lists the supported operators/constants/functions and warns that pole/zero restoration is limited to factored rational forms
+  - Added compiler coverage in `src/math/ast-to-glsl.test.ts`
+  - Added mode-exit extraction success/failure coverage in `src/store/explorer-store.test.ts`
+- [P2] Canonical parity coverage is now complete.
+  - Corrected the mislabeled `z` parity test to use an actual zero at the origin
+  - Added `sin(z)` evaluator and surface parity coverage in `src/math/parity.test.ts`
+- [P2] Ghost-trail coverage now includes the documented linger behavior.
+  - Added end-to-end coverage that exercises drag-created trail DOM and verifies the 600ms clear window
+- [P2] Reuse-focused cleanup closed two remaining structural divergences in touched code.
+  - Added shared conjugate-pair utilities in `src/lib/conjugate-pairs.ts` and removed the hook-layer dependency from singularity helpers
+  - Added shared viewport utilities in `src/lib/viewport.ts` and reused them across 2D input, conformal-grid sampling, mesh generation, and 3D scene framing
 
 ### Remaining audit gaps
 
-- [P1] The original spec’s command-palette preset functions are still incomplete.
-  - The prompt explicitly calls for `identity`, `1/z`, `z²`, and `sin(z)` palette presets
-  - The current palette still enumerates the existing preset list instead of exposing those canonical function commands directly
-- [P1] The prompt’s richer preset gallery requirement is only partially met.
-  - The current gallery is categorized text with descriptions
-  - Thumbnail-based preset cards from the original prompt are still missing
-- [P2] The prompt overstates expression-mode support as “arbitrary complex expressions.”
-  - The live compiler is a curated whitelist in `src/math/ast-to-glsl.ts`
-  - This plan should continue treating expression support as curated/supported functions, not fully arbitrary Math.js input
-- [P2] Canonical parity coverage is still incomplete against the prompt.
-  - The parity suite covers `z`, `1/z`, and `(z-1)/(z+1)`
-  - `sin(z)` parity coverage is still missing
-- [P2] Ghost-trail coverage is still incomplete.
-  - Store behavior is tested
-  - There is still no end-to-end assertion for visible trail rendering or the documented 600ms linger
+- None blocking. The reviewed spec gaps are now implemented and covered.
 
 ### Verified quality gates
 
 - `pnpm lint` passed
-- `pnpm test` passed: 162 tests across 21 Vitest files
-- `pnpm test:e2e` passed: 61 Playwright tests across 2 spec files
+- `pnpm lint:typecheck` passed
+- `pnpm test` passed: 169 tests across 22 Vitest files
+- `pnpm test:e2e` passed: 63 Playwright tests across 2 spec files
 - `pnpm build` passed
 - HaakCo validator complexity check passed with no violations
 - HaakCo validator duplication check passed at 1.6%

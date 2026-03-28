@@ -1,5 +1,9 @@
 import { Store } from "@tanstack/store";
-import { nanoid } from "nanoid";
+import {
+	createComplexEntries,
+	createConjugatePair,
+	shouldCreateConjugatePair,
+} from "@/lib/conjugate-pairs";
 import { type Complex, createComplex } from "../math/complex";
 import { extractRootsFromExpression } from "../math/extract-roots";
 import type { Preset } from "./presets";
@@ -90,19 +94,9 @@ function addSingularityPair(type: "pole" | "zero", re: number, im: number): void
 	explorerStore.setState((prev) => {
 		const listKey = type === "pole" ? "poles" : "zeros";
 		const list = prev[listKey] as Complex[];
-		const needsPair = prev.enforceConjugates && Math.abs(im) > 0.01;
-
-		if (needsPair) {
-			const id1 = nanoid();
-			const id2 = nanoid();
-			const item1: Complex = { id: id1, type, re, im, pairId: id2 };
-			const item2: Complex = { id: id2, type, re, im: -im, pairId: id1 };
-			return { ...prev, [listKey]: [...list, item1, item2] };
-		}
-
 		return {
 			...prev,
-			[listKey]: [...list, { id: nanoid(), type, re, im: needsPair ? im : im }],
+			[listKey]: [...list, ...createComplexEntries(type, re, im, prev.enforceConjugates)],
 		};
 	});
 }
@@ -175,19 +169,12 @@ export function buildWithConjugates(
 	for (let i = 0; i < roots.length; i++) {
 		if (used.has(i)) continue;
 		const r = roots[i];
-		const conjugateIdx = Math.abs(r.im) > 0.01 ? findConjugateIndex(roots, i, used) : -1;
+		const conjugateIdx = shouldCreateConjugatePair(r.im) ? findConjugateIndex(roots, i, used) : -1;
 
 		if (conjugateIdx >= 0) {
-			const id1 = nanoid();
-			const id2 = nanoid();
-			result.push({ id: id1, type, re: r.re, im: r.im, pairId: id2 });
-			result.push({
-				id: id2,
-				type,
-				re: roots[conjugateIdx].re,
-				im: roots[conjugateIdx].im,
-				pairId: id1,
-			});
+			const [first, second] = createConjugatePair(type, r.re, r.im);
+			result.push(first);
+			result.push({ ...second, re: roots[conjugateIdx].re, im: roots[conjugateIdx].im });
 			used.add(i);
 			used.add(conjugateIdx);
 		} else {

@@ -1,4 +1,5 @@
 import { explorerStore } from "@/store/explorer-store";
+import { complexToPixelPoint, pixelToComplexPoint } from "./viewport";
 
 /**
  * Convert pixel coordinates (relative to canvas top-left) to complex plane coordinates.
@@ -10,11 +11,7 @@ export function pixelToComplex(
 	height: number,
 ): { re: number; im: number } {
 	const state = explorerStore.state;
-	const minDim = Math.min(width, height);
-
-	const re = (localX - width / 2) / (state.zoom * minDim) + state.center.re;
-	const im = (height / 2 - localY) / (state.zoom * minDim) + state.center.im;
-	return { re, im };
+	return pixelToComplexPoint(localX, localY, width, height, state.center, state.zoom);
 }
 
 /**
@@ -26,9 +23,5 @@ export function complexToPixel(
 	height: number,
 ): { x: number; y: number } {
 	const state = explorerStore.state;
-	const minDim = Math.min(width, height);
-
-	const x = (z.re - state.center.re) * state.zoom * minDim + width / 2;
-	const y = height / 2 - (z.im - state.center.im) * state.zoom * minDim;
-	return { x, y };
+	return complexToPixelPoint(z, width, height, state.center, state.zoom);
 }
