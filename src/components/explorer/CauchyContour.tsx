@@ -1,5 +1,6 @@
 import { useStore } from "@tanstack/react-store";
 import { useCallback, useMemo, useRef } from "react";
+import { useDraggablePanel } from "@/hooks/useDraggablePanel";
 import { complexToPixel, pixelToComplex } from "@/lib/coordinates";
 import { formatComplex } from "@/math/complex";
 import { evaluateRational } from "@/math/evaluate-rational";
@@ -173,6 +174,10 @@ export function CauchyContour({ width, height }: CauchyContourProps) {
 		originY: panelOriginY,
 	} = useMemo(() => buildImagePanelPath(imagePoints, IMAGE_PANEL_SIZE), [imagePoints]);
 
+	// Draggable image panel
+	const { dragStyle: imagePanelDragStyle, onDragStart: onImagePanelDragStart } =
+		useDraggablePanel();
+
 	// --- Drag handlers ---
 
 	const handleCenterPointerDown = useCallback(
@@ -339,11 +344,17 @@ export function CauchyContour({ width, height }: CauchyContourProps) {
 			{/* Image of Circle floating popup */}
 			{cauchyShowImage && (
 				<section
-					className="absolute top-3 right-3 z-30 rounded-lg border border-border bg-[oklch(0.12_0.01_247)] shadow-xl"
-					style={{ width: IMAGE_PANEL_SIZE + 16 }}
+					className="absolute left-3 top-3 z-30 rounded-lg border border-border bg-[oklch(0.12_0.01_247)] shadow-xl"
+					style={{ width: IMAGE_PANEL_SIZE + 16, ...imagePanelDragStyle }}
 					aria-label="Image of contour circle"
 				>
-					<div className="flex items-center justify-between px-3 py-1.5 border-b border-border">
+					{/* biome-ignore lint/a11y/useSemanticElements: drag handle needs div for pointer events */}
+					<div
+						className="flex items-center justify-between px-3 py-1.5 border-b border-border cursor-grab active:cursor-grabbing select-none"
+						onPointerDown={onImagePanelDragStart}
+						role="toolbar"
+						aria-label="Drag to reposition"
+					>
 						<span className="text-xs font-medium text-foreground">Image of Circle</span>
 						<button
 							type="button"

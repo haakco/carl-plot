@@ -1,5 +1,6 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { useMemo, useState } from "react";
+import { useDraggablePanel } from "@/hooks/useDraggablePanel";
 import { applyExplorerExample, examples } from "@/store/examples";
 import type { PresetCategory } from "@/store/presets";
 import { ExampleThumbnail } from "./ExampleThumbnail";
@@ -25,6 +26,7 @@ interface ExamplesDialogProps {
 
 export function ExamplesDialog({ open, onOpenChange }: ExamplesDialogProps) {
 	const [activeCategory, setActiveCategory] = useState<PresetCategory | "all">("all");
+	const { dragStyle, onDragStart } = useDraggablePanel();
 
 	const grouped = useMemo(() => {
 		const map = new Map<PresetCategory, typeof examples>();
@@ -45,8 +47,17 @@ export function ExamplesDialog({ open, onOpenChange }: ExamplesDialogProps) {
 		<Dialog.Root open={open} onOpenChange={onOpenChange}>
 			<Dialog.Portal>
 				<Dialog.Overlay className="fixed inset-0 z-50 bg-black/50" />
-				<Dialog.Content className="fixed top-1/2 left-1/2 z-50 w-[520px] max-w-[90vw] max-h-[80vh] -translate-x-1/2 -translate-y-1/2 rounded-lg border bg-background shadow-xl overflow-hidden flex flex-col">
-					<div className="flex items-center justify-between border-b px-4 py-3">
+				<Dialog.Content
+					className="fixed top-1/2 left-1/2 z-50 w-[520px] max-w-[90vw] max-h-[80vh] -translate-x-1/2 -translate-y-1/2 rounded-lg border bg-background shadow-xl overflow-hidden flex flex-col"
+					style={dragStyle}
+				>
+					{/* biome-ignore lint/a11y/useSemanticElements: drag handle for dialog title bar */}
+					<div
+						className="flex items-center justify-between border-b px-4 py-3 cursor-grab active:cursor-grabbing select-none"
+						onPointerDown={onDragStart}
+						role="toolbar"
+						aria-label="Drag to reposition"
+					>
 						<Dialog.Title className="text-sm font-medium text-foreground">Examples</Dialog.Title>
 						<Dialog.Close className="text-muted-foreground hover:text-foreground text-xs px-1">
 							✕

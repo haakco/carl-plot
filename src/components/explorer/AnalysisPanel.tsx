@@ -1,5 +1,6 @@
 import { useStore } from "@tanstack/react-store";
 import { useMemo } from "react";
+import { useDraggablePanel } from "@/hooks/useDraggablePanel";
 import { formatComplex } from "@/math/complex";
 import { computeAllResidues, formatResiduePlain } from "@/math/residue";
 import { explorerStore, setGain, toggleShowAllResidues } from "@/store/explorer-store";
@@ -96,15 +97,23 @@ interface AnalysisPanelProps {
 export function AnalysisPanel({ open, onClose }: AnalysisPanelProps) {
 	const mode = useStore(explorerStore, (s) => s.mode);
 	const isPoleZeroMode = mode === "poles-zeros";
+	const { dragStyle, onDragStart } = useDraggablePanel();
 
 	if (!open) return null;
 
 	return (
 		<section
 			className="absolute right-3 bottom-3 z-30 flex w-[220px] flex-col gap-3 rounded-lg border border-border bg-background/95 p-3 shadow-xl backdrop-blur-sm"
+			style={dragStyle}
 			aria-label="Analysis panel"
 		>
-			<div className="flex items-center justify-between">
+			{/* biome-ignore lint/a11y/useSemanticElements: drag handle needs div for pointer events */}
+			<div
+				className="flex items-center justify-between cursor-grab active:cursor-grabbing select-none"
+				onPointerDown={onDragStart}
+				role="toolbar"
+				aria-label="Drag to reposition"
+			>
 				<span className="text-[11px] font-medium text-foreground">Analysis</span>
 				<button
 					type="button"
