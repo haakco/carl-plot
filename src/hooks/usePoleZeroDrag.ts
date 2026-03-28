@@ -1,16 +1,11 @@
 import { useDrag } from "@use-gesture/react";
 import { useCallback, useRef } from "react";
-import { enforceConjugate } from "@/hooks/useConjugatePairs";
 import { complexToPixel, pixelToComplex } from "@/lib/coordinates";
+import { moveWithConjugate, snapToGrid } from "@/lib/singularity-helpers";
 import type { Complex } from "@/math/complex";
-import { explorerStore, moveSingularity, setSelectedId } from "@/store/explorer-store";
+import { explorerStore, setSelectedId } from "@/store/explorer-store";
 
 const HIT_RADIUS_PX = 20;
-const SNAP_GRID = 4;
-
-function snapToGrid(value: number): number {
-	return Math.round(value * SNAP_GRID) / SNAP_GRID;
-}
 
 function findNearestSingularity(
 	pixelX: number,
@@ -85,11 +80,7 @@ export function usePoleZeroDrag({
 			const position =
 				last && snap ? { re: snapToGrid(complex.re), im: snapToGrid(complex.im) } : complex;
 
-			if (explorerStore.state.enforceConjugates) {
-				enforceConjugate(explorerStore, draggedId, position);
-			} else {
-				moveSingularity(draggedId, position.re, position.im);
-			}
+			moveWithConjugate(draggedId, position);
 
 			if (last) {
 				draggedIdRef.current = null;

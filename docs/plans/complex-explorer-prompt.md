@@ -702,15 +702,24 @@ When the user types an expression in the text field (Phase 2), the pipeline is:
 
 The "analytic landscape" renders |f(z)| as height over the complex plane, colored by arg(f(z)). Zeros become valleys touching zero, poles become infinite peaks (clamped via log or arctan).
 
+The 3D surface is **not** a separate interpretation of the function. It is the **same sampled complex domain** shown in 2D, with one additional mapping:
+
+- Domain position `(x, z)` = the same complex-plane point `z = x + iy` currently visible in the 2D canvas
+- Surface height `y` = a monotone compression of `|f(z)|`
+- Surface color = the same phase/modulus color mapping used in the 2D domain coloring view
+
+If a user probes the same complex coordinate in 2D and 3D, they should see the same function value, the same phase hue, and a height consistent with the chosen magnitude transform.
+
 ### Implementation with react-three-fiber
 
 Use a **grid-based mesh** approach:
 
-1. Evaluate f(z) on a uniform grid (128×128 during interaction, 256×256 when stationary)
-2. Height = `log(1 + |f(z)|)` or `(2/π)·arctan(|f(z)|)` to tame pole heights
-3. Color each vertex by `arg(f(z))` using the same hue mapping as 2D domain coloring
-4. Generate `BufferGeometry` with position and color attributes
-5. Use `@react-three/drei`'s `OrbitControls` for camera interaction
+1. Derive the sampled complex-plane bounds from the **same center, zoom, and aspect-ratio transform used by the 2D renderer**. Never use a separate hardcoded extent for 3D
+2. Evaluate `f(z)` on a uniform grid over that exact visible domain (128×128 during interaction, 256×256 when stationary)
+3. Height = `H(|f(z)|)` where `H` is a monotone compression such as `log(1 + |f(z)|)` or `(2/π)·atan(|f(z)|)` to tame pole heights while preserving ordering
+4. Color each vertex with the **same domain-coloring function used in 2D**. Hue must come from `arg(f(z))`; any brightness/value modulation must be derived from the same modulus mapping as the 2D view, not from ad hoc mesh lighting alone
+5. Generate `BufferGeometry` with position and color attributes
+6. Use `@react-three/drei`'s `OrbitControls` for camera interaction
 
 ```tsx
 // Conceptual structure
@@ -723,9 +732,19 @@ Use a **grid-based mesh** approach:
 ```
 
 The `SurfaceMesh` component:
-- Reads poles/zeros from TanStack Store on each `useFrame`
-- Recomputes the mesh geometry when poles/zeros change (throttled to 30fps during drag, full resolution on release)
+- Reads poles/zeros, expression state, center, zoom, and viewport aspect ratio from TanStack Store/shared viewport utilities
+- Recomputes the mesh geometry when poles/zeros or the viewport change (throttled to 30fps during drag, full resolution on release)
+- Uses the same complex-function evaluator as the 2D renderer so poles/zeros mode and expression mode cannot drift
+- Uses a shared CPU/GLSL color-mapping definition so 2D and 3D phase coloring remain visually identical at the same sample point
 - Uses `THREE.ShaderMaterial` with a vertex shader that reads height from a data texture (for GPU-side evaluation) OR computes on CPU with complex.js and uploads as vertex positions
+
+### Parity Requirements
+
+- 3D sampling bounds must match the currently visible 2D viewport exactly
+- A pole, zero, contour, or symmetry visible in 2D must appear at the same `(re, im)` location in 3D
+- The same sample point must produce the same `arg(f(z))` hue in both views
+- If 2D uses modulus contours or brightness modulation derived from `|f(z)|`, 3D color should reuse that mapping unless a setting explicitly disables it
+- Camera defaults should frame the currently visible domain, not a separate world-space extent
 
 ### Performance Strategy
 
@@ -1234,33 +1253,35 @@ Dragging is the signature interaction, but it cannot be the only first-class int
 15. Gain (K) slider in toolbox
 16. Preset gallery (load curated functions)
 17. 3D magnitude surface with react-three-fiber (lazy-loaded)
-18. View toggle (2D ↔ 3D) with shared state
-19. Adaptive quality monitoring
-20. WebGL context loss handling
+18. Shared 2D/3D viewport + color parity pass for analytic landscape correctness
+19. View toggle (2D ↔ 3D) with shared state
+20. Adaptive quality monitoring
+21. WebGL context loss handling
 
 ### Phase 3: Expression Engine (Target: +2 days)
 
-21. Expression text input component
-22. math.js AST → GLSL compiler (`ast-to-glsl.ts`)
-23. Dynamic shader compilation pipeline with error handling
-24. Bidirectional sync: expression ↔ pole/zero extraction
-25. URL state encoding for sharing
-26. Dark/light mode toggle
+22. Expression text input component
+23. math.js AST → GLSL compiler (`ast-to-glsl.ts`)
+24. Dynamic shader compilation pipeline with error handling
+25. Bidirectional sync: expression ↔ pole/zero extraction
+26. URL state encoding for sharing
+27. Dark/light mode toggle
 
 ### Phase 4: Hardening (Target: +1 day)
 
-27. Touch interaction testing and refinement
-28. Performance testing on Chromebook / low-end GPU
-29. Keyboard navigation testing
-30. Accessibility audit
-31. Bundle size verification
-32. E2E tests for core interactions
+28. Touch interaction testing and refinement
+29. Performance testing on Chromebook / low-end GPU
+30. Keyboard navigation testing
+31. Accessibility audit
+32. Bundle size verification
+33. E2E tests for core interactions
+34. 2D/3D parity tests with canonical functions (`z`, `1/z`, `(z-1)/(z+1)`, `sin(z)`)
 
 ### Phase 5: Deployment (Target: +0.5 day)
 
-33. GitHub Pages deployment via GitHub Actions (build on push to main)
-34. Custom domain setup for `plot.catrgb.com` (CNAME record + GitHub Pages config)
-35. Vite `base` path configuration for GitHub Pages compatibility
+35. GitHub Pages deployment via GitHub Actions (build on push to main)
+36. Custom domain setup for `plot.catrgb.com` (CNAME record + GitHub Pages config)
+37. Vite `base` path configuration for GitHub Pages compatibility
 
 ---
 
@@ -1282,6 +1303,10 @@ Before presenting any output, run these checks:
 - [ ] Render loop reads TanStack Store via `store.state`, never via hooks
 - [ ] Shader recompilation never happens during drag operations
 - [ ] Canvas handles context loss gracefully
+- [ ] 2D overlays, drag/drop hit testing, cursor readout, and 3D mesh sampling all use one shared complex-plane coordinate transform
+- [ ] 3D surface bounds are derived from the live 2D viewport aspect ratio and zoom, never from a separate magic number extent
+- [ ] 3D color mapping reuses the same phase/modulus mapping as 2D domain coloring
+- [ ] Canonical probe points produce matching `(re, im)`, `|f(z)|`, and `arg(f(z))` across 2D and 3D
 - [ ] All shadcn components use named Lucide icon imports
 - [ ] Tailwind classes use design system tokens, no arbitrary values
 - [ ] Three.js chunk is code-split and lazy-loaded
@@ -1306,6 +1331,7 @@ Before presenting any output, run these checks:
 | Spirulae | https://harry7557558.github.io/spirulae/ | Best-in-class GPU math visualization. Study the expression→GLSL pipeline and 3D surface rendering |
 | cplot | https://person594.github.io/cplot/ | Clean expression parsing → GLSL compilation |
 | complex-analysis.com | https://complex-analysis.com/content/domain_coloring.html | The target user experience for domain coloring education |
+| complex-analysis.com analytic landscapes | https://complex-analysis.com/content/analytic_landscapes.html | Canonical definition of the 3D view: graph of `|f(x+iy)|` colored by phase |
 | David Bau's conformal | https://www.davidbau.com/conformal/ | Minimal, elegant expression-driven complex viz |
 | Control Systems Academy | https://controlsystemsacademy.com/0019/0019.html | Gold standard for interactive pole/zero placement UI |
 | Shadertoy examples | https://www.shadertoy.com/view/WtlGDN | Domain coloring shader patterns (Gamma function) |
@@ -1317,6 +1343,7 @@ Before presenting any output, run these checks:
 | GLSL complex number implementation | Harley Turan: "Visualizing Complex Numbers Using GLSL" (hturan.com) |
 | Enhanced domain coloring theory | Wegert (2012): "Visual Exploration of Complex Functions" |
 | Domain coloring color mapping | Linköping University: "Visualizing complex analytic functions using domain coloring" |
+| Lifted domain coloring on surfaces | Poelke & Polthier (2009): "Lifted Domain Coloring" |
 | Dynamic shader compilation | Ryan Kaplan: "Building a Fast Equation Grapher" (rykap.com) |
 | Expression → GLSL | jzohdi/glsl_math on GitHub |
 | react-three-fiber custom shaders | drei docs: `shaderMaterial` helper |

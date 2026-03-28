@@ -74,8 +74,32 @@ function hsv2rgb(h: number, s: number, v: number): [number, number, number] {
 }
 
 /**
+ * Compute the visible complex-plane bounds matching the 2D renderer's coordinate mapping:
+ *   z = (pixel - 0.5*resolution) / min(resolution.x, resolution.y) / zoom + center
+ */
+export function getViewportBounds(
+	canvasWidth: number,
+	canvasHeight: number,
+	center: { re: number; im: number },
+	zoom: number,
+): { reMin: number; reMax: number; imMin: number; imMax: number } {
+	const minDim = Math.min(canvasWidth, canvasHeight);
+	const halfExtentX = canvasWidth / (2 * minDim * zoom);
+	const halfExtentY = canvasHeight / (2 * minDim * zoom);
+	return {
+		reMin: center.re - halfExtentX,
+		reMax: center.re + halfExtentX,
+		imMin: center.im - halfExtentY,
+		imMax: center.im + halfExtentY,
+	};
+}
+
+/**
  * Generate a mesh representing |f(z)| as a height surface over the complex plane.
- * Uses domain coloring for vertex colors.
+ * Uses the same domain coloring as the 2D view for vertex colors:
+ *   hue  = arg(f(z)) / (2*pi) + 0.5
+ *   lightness = (2/pi) * atan(|f(z)|)
+ *   saturation = 0.85
  */
 export function generateSurfaceMesh(
 	poles: Complex[],
@@ -85,9 +109,12 @@ export function generateSurfaceMesh(
 	zoom: number,
 	resolution = 128,
 	customEval?: EvalFn,
+	canvasWidth = 800,
+	canvasHeight = 600,
 ): MeshData {
-	const extent = 3 / zoom;
-	const step = (2 * extent) / resolution;
+	const bounds = getViewportBounds(canvasWidth, canvasHeight, center, zoom);
+	const stepRe = (bounds.reMax - bounds.reMin) / resolution;
+	const stepIm = (bounds.imMax - bounds.imMin) / resolution;
 
 	const vertexCount = (resolution + 1) * (resolution + 1);
 	const positions = new Float32Array(vertexCount * 3);
@@ -96,8 +123,8 @@ export function generateSurfaceMesh(
 	for (let j = 0; j <= resolution; j++) {
 		for (let i = 0; i <= resolution; i++) {
 			const idx = j * (resolution + 1) + i;
-			const re = center.re - extent + i * step;
-			const im = center.im - extent + j * step;
+			const re = bounds.reMin + i * stepRe;
+			const im = bounds.imMin + j * stepIm;
 
 			const { mag, arg } = customEval ? customEval(re, im) : evaluateF(re, im, poles, zeros, gain);
 			const height = Math.min((2 / Math.PI) * Math.atan(mag), 1) * MAX_HEIGHT;
@@ -106,8 +133,10 @@ export function generateSurfaceMesh(
 			positions[idx * 3 + 1] = height;
 			positions[idx * 3 + 2] = -(im - center.im);
 
+			// Match 2D domain coloring: hue from arg, lightness from atan(mag), saturation 0.85
 			const hue = arg / (2 * Math.PI) + 0.5;
-			const [r, g, b] = hsv2rgb(((hue % 1) + 1) % 1, 0.85, 0.6 + 0.4 * (height / MAX_HEIGHT));
+			const lightness = (2 / Math.PI) * Math.atan(mag);
+			const [r, g, b] = hsv2rgb(((hue % 1) + 1) % 1, 0.85, lightness);
 			colors[idx * 3] = r;
 			colors[idx * 3 + 1] = g;
 			colors[idx * 3 + 2] = b;

@@ -49,6 +49,7 @@ export class DomainColoringRenderer {
 	private currentExpression = "";
 	private expressionError: string | null = null;
 	private expressionDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+	private isContextLost = false;
 
 	private boundContextLost: (event: Event) => void;
 	private boundContextRestored: () => void;
@@ -85,6 +86,7 @@ export class DomainColoringRenderer {
 	}
 
 	render(): void {
+		if (this.isContextLost) return;
 		const gl = this.gl;
 		if (!gl) return;
 
@@ -242,19 +244,30 @@ export class DomainColoringRenderer {
 
 	private handleContextLoss(event: Event): void {
 		event.preventDefault();
+		this.isContextLost = true;
 		this.stopLoop();
+		explorerStore.setState((prev) => ({ ...prev, webglContextLost: true }));
 	}
 
 	private handleContextRestored(): void {
+		this.isContextLost = false;
 		this.gl = null;
 		this.program = null;
 		this.vertexShader = null;
 		this.fragmentShader = null;
 		this.quadBuffer = null;
 		this.uniforms = {};
+		this.shaderCompiler = null;
+		this.expressionProgram = null;
+		this.currentExpression = "";
 
 		this.init();
+		const rect = this.canvas.getBoundingClientRect();
+		if (rect.width > 0 && rect.height > 0) {
+			this.resize(rect.width, rect.height);
+		}
 		this.startLoop();
+		explorerStore.setState((prev) => ({ ...prev, webglContextLost: false }));
 	}
 
 	destroy(): void {

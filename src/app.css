@@ -88,3 +88,19 @@
 			"calt" 1;
 	}
 }
+
+/* Focus ring for SVG marker groups */
+g[role="button"]:focus-visible > .marker-focus-ring {
+	opacity: 1;
+}
+
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+	}
+}

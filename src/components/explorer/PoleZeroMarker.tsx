@@ -1,7 +1,8 @@
 import { useCallback, useRef } from "react";
-import { enforceConjugate } from "@/hooks/useConjugatePairs";
 import { pixelToComplex } from "@/lib/coordinates";
-import { explorerStore, moveSingularity, setSelectedId } from "@/store/explorer-store";
+import { getStabilityColor, moveWithConjugate, snapToGrid } from "@/lib/singularity-helpers";
+import { formatComplex } from "@/math/complex";
+import { setSelectedId } from "@/store/explorer-store";
 
 interface PoleZeroMarkerProps {
 	type: "pole" | "zero";
@@ -11,15 +12,12 @@ interface PoleZeroMarkerProps {
 	itemId: string;
 	canvasWidth: number;
 	canvasHeight: number;
+	re: number;
+	im: number;
 }
 
 const POLE_COLOR = "oklch(0.65 0.18 25)";
 const ZERO_COLOR = "oklch(0.65 0.15 195)";
-const SNAP_GRID = 4;
-
-function snapToGrid(value: number): number {
-	return Math.round(value * SNAP_GRID) / SNAP_GRID;
-}
 
 export function PoleZeroMarker({
 	type,
@@ -29,6 +27,8 @@ export function PoleZeroMarker({
 	itemId,
 	canvasWidth,
 	canvasHeight,
+	re,
+	im,
 }: PoleZeroMarkerProps) {
 	const color = type === "pole" ? POLE_COLOR : ZERO_COLOR;
 	const size = isSelected ? 8 : 6;
@@ -57,12 +57,7 @@ export function PoleZeroMarker({
 				const localX = moveEvent.clientX - svgRect.left;
 				const localY = moveEvent.clientY - svgRect.top;
 				const complex = pixelToComplex(localX, localY, canvasWidth, canvasHeight);
-
-				if (explorerStore.state.enforceConjugates) {
-					enforceConjugate(explorerStore, itemId, complex);
-				} else {
-					moveSingularity(itemId, complex.re, complex.im);
-				}
+				moveWithConjugate(itemId, complex);
 			};
 
 			const onPointerUp = (upEvent: PointerEvent) => {
@@ -79,12 +74,7 @@ export function PoleZeroMarker({
 					re: snapToGrid(complex.re),
 					im: snapToGrid(complex.im),
 				};
-
-				if (explorerStore.state.enforceConjugates) {
-					enforceConjugate(explorerStore, itemId, snapped);
-				} else {
-					moveSingularity(itemId, snapped.re, snapped.im);
-				}
+				moveWithConjugate(itemId, snapped);
 			};
 
 			window.addEventListener("pointermove", onPointerMove);
@@ -93,19 +83,59 @@ export function PoleZeroMarker({
 		[itemId, canvasWidth, canvasHeight],
 	);
 
+	const label = `${type === "pole" ? "Pole" : "Zero"} at ${formatComplex({ id: itemId, type, re, im })}`;
+
+	const handleKeyDown = useCallback(
+		(e: React.KeyboardEvent) => {
+			if (e.key === "Enter" || e.key === " ") {
+				e.preventDefault();
+				setSelectedId(itemId);
+			}
+		},
+		[itemId],
+	);
+
 	return (
+		// biome-ignore lint/a11y/useSemanticElements: SVG <g> elements cannot be replaced with <button>
 		<g
 			ref={svgRef}
 			transform={`translate(${pixelX}, ${pixelY})`}
 			style={{ pointerEvents: "auto", cursor: "grab", touchAction: "none" }}
 			onPointerDown={handlePointerDown}
+			onKeyDown={handleKeyDown}
+			tabIndex={0}
+			role="button"
+			aria-label={label}
+			className="focus-visible:outline-none"
 		>
 			{/* Hit target — large touch-friendly area */}
 			<circle r={30} fill="transparent" />
 
+			{/* Focus ring (visible on keyboard focus) */}
+			<circle
+				r={size + 6}
+				fill="none"
+				stroke={color}
+				strokeWidth={2}
+				opacity={0}
+				className="marker-focus-ring"
+			/>
+
 			{/* Selection ring */}
 			{isSelected && (
 				<circle r={size + 4} fill="none" stroke={color} strokeWidth={1} opacity={0.4} />
+			)}
+
+			{/* Stability glow ring for poles (Z-transform: unit circle stability) */}
+			{type === "pole" && (
+				<circle
+					r={size + 10}
+					fill="none"
+					stroke={getStabilityColor(re, im)}
+					strokeWidth={2}
+					opacity={0.3}
+					strokeDasharray="4 2"
+				/>
 			)}
 
 			{type === "pole" ? (

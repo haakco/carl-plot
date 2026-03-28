@@ -1,3 +1,4 @@
+import { useThree } from "@react-three/fiber";
 import { useStore } from "@tanstack/react-store";
 import { useMemo, useRef } from "react";
 import * as THREE from "three";
@@ -16,6 +17,7 @@ export function SurfaceMesh() {
 	const zoom = useStore(explorerStore, (s) => s.zoom);
 	const mode = useStore(explorerStore, (s) => s.mode);
 	const expression = useStore(explorerStore, (s) => s.expression);
+	const { size } = useThree();
 
 	const geometry = useMemo(() => {
 		let customEval: ((re: number, im: number) => { mag: number; arg: number }) | undefined;
@@ -26,6 +28,9 @@ export function SurfaceMesh() {
 			}
 		}
 
+		const canvasWidth = size.width || 800;
+		const canvasHeight = size.height || 600;
+
 		const { positions, colors, indices } = generateSurfaceMesh(
 			poles,
 			zeros,
@@ -34,6 +39,8 @@ export function SurfaceMesh() {
 			zoom,
 			RESOLUTION,
 			customEval,
+			canvasWidth,
+			canvasHeight,
 		);
 
 		const geo = new THREE.BufferGeometry();
@@ -43,7 +50,7 @@ export function SurfaceMesh() {
 		geo.computeVertexNormals();
 
 		return geo;
-	}, [poles, zeros, gain, center, zoom, mode, expression]);
+	}, [poles, zeros, gain, center, zoom, mode, expression, size.width, size.height]);
 
 	return (
 		<mesh ref={meshRef} geometry={geometry}>

@@ -1,14 +1,18 @@
 import { useStore } from "@tanstack/react-store";
 import { ChevronDown, ChevronUp, Circle, X } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
-import { enforceConjugate } from "@/hooks/useConjugatePairs";
+import {
+	getStabilityColor,
+	moveWithConjugate,
+	parseCoordinate,
+	snapToGrid,
+} from "@/lib/singularity-helpers";
 import type { Complex } from "@/math/complex";
 import { formatComplex } from "@/math/complex";
 import {
 	addPole,
 	addZero,
 	explorerStore,
-	moveSingularity,
 	removeSingularity,
 	setSelectedId,
 } from "@/store/explorer-store";
@@ -50,8 +54,10 @@ function MiniMap() {
 			if (!isDraggingRef.current || !draggingIdRef.current) return;
 			const px = me.clientX - rect.left;
 			const py = me.clientY - rect.top;
-			const { re, im } = fromMinimap(px, py);
-			moveSingularity(draggingIdRef.current, re, im);
+			const position = fromMinimap(px, py);
+			if (draggingIdRef.current) {
+				moveWithConjugate(draggingIdRef.current, position);
+			}
 		};
 
 		const onUp = (ue: PointerEvent) => {
@@ -60,11 +66,11 @@ function MiniMap() {
 			const py = ue.clientY - rect.top;
 			const { re, im } = fromMinimap(px, py);
 			const snapped = {
-				re: Math.round(re * 4) / 4,
-				im: Math.round(im * 4) / 4,
+				re: snapToGrid(re),
+				im: snapToGrid(im),
 			};
 			if (draggingIdRef.current) {
-				moveSingularity(draggingIdRef.current, snapped.re, snapped.im);
+				moveWithConjugate(draggingIdRef.current, snapped);
 			}
 			draggingIdRef.current = null;
 			window.removeEventListener("pointermove", onMove);
@@ -164,6 +170,20 @@ function MiniMap() {
 							/>
 						)}
 
+						{/* Stability glow ring for poles (Z-transform: unit circle stability) */}
+						{item.type === "pole" && (
+							<circle
+								cx={x}
+								cy={y}
+								r={size + 6}
+								fill="none"
+								stroke={getStabilityColor(item.re, item.im)}
+								strokeWidth={1.5}
+								opacity={0.3}
+								strokeDasharray="3 1.5"
+							/>
+						)}
+
 						{item.type === "pole" ? (
 							<>
 								<line
@@ -195,30 +215,6 @@ function MiniMap() {
 	);
 }
 
-function parseCoordinate(raw: string): { re: number; im: number } | null {
-	const s = raw.trim().replace(/\s/g, "");
-	if (!s) return null;
-
-	const match = s.match(/^([+-]?[\d.]+)([+-][\d.]+)i$/);
-	if (match) {
-		const re = Number.parseFloat(match[1]);
-		const im = Number.parseFloat(match[2]);
-		if (!Number.isFinite(re) || !Number.isFinite(im)) return null;
-		return { re, im };
-	}
-
-	const imMatch = s.match(/^([+-]?[\d.]+)i$/);
-	if (imMatch) {
-		const im = Number.parseFloat(imMatch[1]);
-		if (!Number.isFinite(im)) return null;
-		return { re: 0, im };
-	}
-
-	const re = Number.parseFloat(s);
-	if (Number.isFinite(re)) return { re, im: 0 };
-	return null;
-}
-
 function CoordRow({ item }: { item: Complex }) {
 	const [editing, setEditing] = useState(false);
 	const [editValue, setEditValue] = useState("");
@@ -236,11 +232,7 @@ function CoordRow({ item }: { item: Complex }) {
 	const commitEdit = useCallback(() => {
 		const parsed = parseCoordinate(editValue);
 		if (parsed) {
-			if (explorerStore.state.enforceConjugates) {
-				enforceConjugate(explorerStore, item.id, parsed);
-			} else {
-				moveSingularity(item.id, parsed.re, parsed.im);
-			}
+			moveWithConjugate(item.id, parsed);
 		}
 		setEditing(false);
 	}, [editValue, item.id]);
@@ -274,8 +266,8 @@ function CoordRow({ item }: { item: Complex }) {
 					type="button"
 					onDoubleClick={startEditing}
 					onClick={() => setSelectedId(item.id)}
-					className="min-w-0 flex-1 cursor-pointer truncate text-left font-mono text-[11px] tabular-nums text-foreground"
-					title="Double-click to edit"
+					className="min-w-0 flex-1 cursor-pointer truncate text-left font-mono text-[11px] tabular-nums text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:rounded-sm"
+					aria-label={`${item.type === "pole" ? "Pole" : "Zero"} at ${formatComplex(item)}, double-click to edit`}
 				>
 					{formatComplex(item)}
 				</button>
@@ -284,7 +276,7 @@ function CoordRow({ item }: { item: Complex }) {
 			<button
 				type="button"
 				onClick={() => removeSingularity(item.id)}
-				className="shrink-0 rounded-sm p-0.5 text-muted-foreground hover:text-destructive"
+				className="shrink-0 rounded-sm p-0.5 text-muted-foreground hover:text-destructive focus-visible:ring-2 focus-visible:ring-ring"
 				aria-label={`Remove ${item.type}`}
 			>
 				<X className="size-2.5" />
@@ -304,7 +296,8 @@ export function PoleZeroPanel() {
 			<button
 				type="button"
 				onClick={() => setCollapsed((c) => !c)}
-				className="flex items-center gap-1.5 px-2 py-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground hover:text-foreground"
+				aria-expanded={!collapsed}
+				className="flex items-center gap-1.5 px-2 py-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
 			>
 				<span className="flex-1 text-left">Poles & Zeros</span>
 				{collapsed ? <ChevronDown className="size-3.5" /> : <ChevronUp className="size-3.5" />}
@@ -326,17 +319,19 @@ export function PoleZeroPanel() {
 						<button
 							type="button"
 							onClick={() => addPole(0, 0)}
-							className="flex flex-1 items-center justify-center gap-1 rounded-sm bg-pole-bg px-1 py-0.5 text-[10px] font-medium text-foreground hover:opacity-80"
+							aria-label="Add pole at origin"
+							className="flex flex-1 items-center justify-center gap-1 rounded-sm bg-pole-bg px-1 py-0.5 text-[10px] font-medium text-foreground hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring"
 						>
-							<X className="size-2.5 text-pole" strokeWidth={2.5} />
+							<X className="size-2.5 text-pole" strokeWidth={2.5} aria-hidden="true" />
 							Pole
 						</button>
 						<button
 							type="button"
 							onClick={() => addZero(0, 0)}
-							className="flex flex-1 items-center justify-center gap-1 rounded-sm bg-zero-bg px-1 py-0.5 text-[10px] font-medium text-foreground hover:opacity-80"
+							aria-label="Add zero at origin"
+							className="flex flex-1 items-center justify-center gap-1 rounded-sm bg-zero-bg px-1 py-0.5 text-[10px] font-medium text-foreground hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring"
 						>
-							<Circle className="size-2.5 text-zero" strokeWidth={2.5} />
+							<Circle className="size-2.5 text-zero" strokeWidth={2.5} aria-hidden="true" />
 							Zero
 						</button>
 					</div>

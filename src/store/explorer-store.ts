@@ -27,10 +27,14 @@ export interface ExplorerState {
 	cursorZ: { re: number; im: number } | null;
 	enforceConjugates: boolean;
 
+	formulaForm: "factored" | "expanded";
+
 	cauchyContour: boolean;
 	cauchyCenter: { re: number; im: number };
 	cauchyRadius: number;
 	cauchyShowImage: boolean;
+
+	webglContextLost: boolean;
 }
 
 const initialState: ExplorerState = {
@@ -57,10 +61,14 @@ const initialState: ExplorerState = {
 	cursorZ: null,
 	enforceConjugates: true,
 
+	formulaForm: "factored",
+
 	cauchyContour: false,
 	cauchyCenter: { re: 0, im: 0 },
 	cauchyRadius: 1.5,
 	cauchyShowImage: false,
+
+	webglContextLost: false,
 };
 
 export const explorerStore = new Store<ExplorerState>(initialState);
@@ -181,6 +189,13 @@ export function toggleEnforceConjugates(): void {
 	explorerStore.setState((prev) => ({
 		...prev,
 		enforceConjugates: !prev.enforceConjugates,
+	}));
+}
+
+export function toggleFormulaForm(): void {
+	explorerStore.setState((prev) => ({
+		...prev,
+		formulaForm: prev.formulaForm === "factored" ? "expanded" : "factored",
 	}));
 }
 

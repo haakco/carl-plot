@@ -1,7 +1,8 @@
 import { useStore } from "@tanstack/react-store";
 import { Circle, X } from "lucide-react";
 import { useToolboxDrag } from "@/hooks/useToolboxDrag";
-import { explorerStore, loadPreset, setGain } from "@/store/explorer-store";
+import { announceToScreenReader } from "@/lib/a11y-announce";
+import { addPole, addZero, explorerStore, loadPreset, setGain } from "@/store/explorer-store";
 import { presets } from "@/store/presets";
 import { PlacedList } from "./PlacedList";
 
@@ -21,20 +22,42 @@ function CreateSection() {
 		<section>
 			<SectionLabel>Create</SectionLabel>
 			<div className="flex gap-2">
+				{/* biome-ignore lint/a11y/useSemanticElements: drag source requires div for @use-gesture bindings */}
 				<div
 					{...poleBind()}
 					style={{ touchAction: "none" }}
-					className="flex flex-1 cursor-grab items-center gap-1.5 rounded-sm border border-pole-bg bg-pole-bg px-2 py-1.5 active:cursor-grabbing"
+					className="flex flex-1 cursor-grab items-center gap-1.5 rounded-sm border border-pole-bg bg-pole-bg px-2 py-1.5 focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing"
+					role="button"
+					tabIndex={0}
+					aria-label="Create pole — drag onto canvas or press Enter"
+					onKeyDown={(e) => {
+						if (e.key === "Enter" || e.key === " ") {
+							e.preventDefault();
+							addPole(0, 0);
+							announceToScreenReader("Pole added at origin");
+						}
+					}}
 				>
-					<X className="size-3.5 text-pole" strokeWidth={2.5} />
+					<X className="size-3.5 text-pole" strokeWidth={2.5} aria-hidden="true" />
 					<span className="text-[13px] font-medium text-foreground">Pole</span>
 				</div>
+				{/* biome-ignore lint/a11y/useSemanticElements: drag source requires div for @use-gesture bindings */}
 				<div
 					{...zeroBind()}
 					style={{ touchAction: "none" }}
-					className="flex flex-1 cursor-grab items-center gap-1.5 rounded-sm border border-zero-bg bg-zero-bg px-2 py-1.5 active:cursor-grabbing"
+					className="flex flex-1 cursor-grab items-center gap-1.5 rounded-sm border border-zero-bg bg-zero-bg px-2 py-1.5 focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing"
+					role="button"
+					tabIndex={0}
+					aria-label="Create zero — drag onto canvas or press Enter"
+					onKeyDown={(e) => {
+						if (e.key === "Enter" || e.key === " ") {
+							e.preventDefault();
+							addZero(0, 0);
+							announceToScreenReader("Zero added at origin");
+						}
+					}}
 				>
-					<Circle className="size-3.5 text-zero" strokeWidth={2.5} />
+					<Circle className="size-3.5 text-zero" strokeWidth={2.5} aria-hidden="true" />
 					<span className="text-[13px] font-medium text-foreground">Zero</span>
 				</div>
 			</div>
@@ -53,7 +76,7 @@ function ExamplesSection() {
 						type="button"
 						onClick={() => loadPreset(preset)}
 						title={preset.description}
-						className="rounded-sm px-1.5 py-1 text-left text-[12px] text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+						className="rounded-sm px-1.5 py-1 text-left text-[12px] text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
 					>
 						{preset.name}
 					</button>
@@ -83,6 +106,7 @@ function ControlsSection() {
 					step={0.01}
 					value={gain}
 					onChange={(event) => setGain(Number.parseFloat(event.target.value))}
+					aria-label={`Gain K: ${gain.toFixed(2)}`}
 					className="h-1.5 w-full cursor-pointer accent-foreground"
 				/>
 			</div>

@@ -54,8 +54,9 @@ export function SettingsPanel() {
 			<button
 				type="button"
 				onClick={() => setIsOpen((prev) => !prev)}
-				className="rounded-sm p-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-				aria-label="Toggle settings panel"
+				className="rounded-sm p-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+				aria-label="Settings"
+				aria-expanded={isOpen}
 			>
 				<Settings className="size-4" />
 			</button>
@@ -99,6 +100,7 @@ export function SettingsPanel() {
 							step={0.1}
 							value={contourDensity}
 							onChange={(e) => setContourDensity(Number.parseFloat(e.target.value))}
+							aria-label={`Contour density: ${contourDensity.toFixed(1)}`}
 							className="mt-1 h-1.5 w-full cursor-pointer accent-foreground"
 						/>
 					</div>
