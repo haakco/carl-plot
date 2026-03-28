@@ -26,6 +26,11 @@ export interface ExplorerState {
 	hoveredId: string | null;
 	cursorZ: { re: number; im: number } | null;
 	enforceConjugates: boolean;
+
+	cauchyContour: boolean;
+	cauchyCenter: { re: number; im: number };
+	cauchyRadius: number;
+	cauchyShowImage: boolean;
 }
 
 const initialState: ExplorerState = {
@@ -50,35 +55,61 @@ const initialState: ExplorerState = {
 	selectedId: null,
 	hoveredId: null,
 	cursorZ: null,
-	enforceConjugates: false,
+	enforceConjugates: true,
+
+	cauchyContour: false,
+	cauchyCenter: { re: 0, im: 0 },
+	cauchyRadius: 1.5,
+	cauchyShowImage: false,
 };
 
 export const explorerStore = new Store<ExplorerState>(initialState);
 
 // --- Actions ---
 
+function addSingularityPair(type: "pole" | "zero", re: number, im: number): void {
+	explorerStore.setState((prev) => {
+		const listKey = type === "pole" ? "poles" : "zeros";
+		const list = prev[listKey] as Complex[];
+		const needsPair = prev.enforceConjugates && Math.abs(im) > 0.01;
+
+		if (needsPair) {
+			const id1 = nanoid();
+			const id2 = nanoid();
+			const item1: Complex = { id: id1, type, re, im, pairId: id2 };
+			const item2: Complex = { id: id2, type, re, im: -im, pairId: id1 };
+			return { ...prev, [listKey]: [...list, item1, item2] };
+		}
+
+		return {
+			...prev,
+			[listKey]: [...list, { id: nanoid(), type, re, im: needsPair ? im : im }],
+		};
+	});
+}
+
 export function addPole(re: number, im: number): void {
-	explorerStore.setState((prev) => ({
-		...prev,
-		poles: [...prev.poles, { id: nanoid(), type: "pole" as const, re, im }],
-	}));
+	addSingularityPair("pole", re, im);
 }
 
 export function addZero(re: number, im: number): void {
-	explorerStore.setState((prev) => ({
-		...prev,
-		zeros: [...prev.zeros, { id: nanoid(), type: "zero" as const, re, im }],
-	}));
+	addSingularityPair("zero", re, im);
 }
 
 export function removeSingularity(id: string): void {
-	explorerStore.setState((prev) => ({
-		...prev,
-		poles: prev.poles.filter((p) => p.id !== id),
-		zeros: prev.zeros.filter((z) => z.id !== id),
-		selectedId: prev.selectedId === id ? null : prev.selectedId,
-		hoveredId: prev.hoveredId === id ? null : prev.hoveredId,
-	}));
+	explorerStore.setState((prev) => {
+		const item = prev.poles.find((p) => p.id === id) ?? prev.zeros.find((z) => z.id === id);
+		const pairId = item?.pairId;
+		const shouldRemove = (entry: Complex) => entry.id !== id && entry.id !== pairId;
+
+		return {
+			...prev,
+			poles: prev.poles.filter(shouldRemove),
+			zeros: prev.zeros.filter(shouldRemove),
+			selectedId: prev.selectedId === id || prev.selectedId === pairId ? null : prev.selectedId,
+			hoveredId: prev.hoveredId === id || prev.hoveredId === pairId ? null : prev.hoveredId,
+		};
+	});
 }
 
 export function moveSingularity(id: string, re: number, im: number): void {
@@ -151,6 +182,22 @@ export function toggleEnforceConjugates(): void {
 		...prev,
 		enforceConjugates: !prev.enforceConjugates,
 	}));
+}
+
+export function toggleCauchyContour(): void {
+	explorerStore.setState((prev) => ({ ...prev, cauchyContour: !prev.cauchyContour }));
+}
+
+export function setCauchyCenter(re: number, im: number): void {
+	explorerStore.setState((prev) => ({ ...prev, cauchyCenter: { re, im } }));
+}
+
+export function setCauchyRadius(radius: number): void {
+	explorerStore.setState((prev) => ({ ...prev, cauchyRadius: Math.max(0.05, radius) }));
+}
+
+export function toggleCauchyShowImage(): void {
+	explorerStore.setState((prev) => ({ ...prev, cauchyShowImage: !prev.cauchyShowImage }));
 }
 
 export function reset(): void {

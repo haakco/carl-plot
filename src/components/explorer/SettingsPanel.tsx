@@ -4,6 +4,8 @@ import { useState } from "react";
 import { getTheme, toggleTheme } from "@/lib/theme";
 import {
 	explorerStore,
+	toggleCauchyContour,
+	toggleCauchyShowImage,
 	toggleEnforceConjugates,
 	toggleGrid,
 	toggleModContours,
@@ -44,6 +46,8 @@ export function SettingsPanel() {
 	const showPhaseContours = useStore(explorerStore, (s) => s.showPhaseContours);
 	const showGrid = useStore(explorerStore, (s) => s.showGrid);
 	const contourDensity = useStore(explorerStore, (s) => s.contourDensity);
+	const cauchyContour = useStore(explorerStore, (s) => s.cauchyContour);
+	const cauchyShowImage = useStore(explorerStore, (s) => s.cauchyShowImage);
 
 	return (
 		<div className="relative">
@@ -97,6 +101,26 @@ export function SettingsPanel() {
 							onChange={(e) => setContourDensity(Number.parseFloat(e.target.value))}
 							className="mt-1 h-1.5 w-full cursor-pointer accent-foreground"
 						/>
+					</div>
+
+					<div className="mt-3 border-t pt-3">
+						<h4 className="pb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+							Cauchy Contour
+						</h4>
+						<div className="flex flex-col gap-1">
+							<ToggleRow
+								label="Show contour circle"
+								checked={cauchyContour}
+								onChange={toggleCauchyContour}
+							/>
+							{cauchyContour && (
+								<ToggleRow
+									label="Show circle image"
+									checked={cauchyShowImage}
+									onChange={toggleCauchyShowImage}
+								/>
+							)}
+						</div>
 					</div>
 
 					<div className="mt-3 border-t pt-3">

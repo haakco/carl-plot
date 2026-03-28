@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useWebGLRenderer } from "@/hooks/useWebGLRenderer";
 import { PanZoomController } from "@/renderer/PanZoomController";
+import { CauchyContour } from "./CauchyContour";
 import { MarkersOverlay } from "./MarkersOverlay";
 
 export function Canvas2D() {
@@ -43,7 +44,10 @@ export function Canvas2D() {
 		<div className="relative h-full w-full">
 			<canvas ref={canvasRef} className="h-full w-full" />
 			{dimensions.width > 0 && (
-				<MarkersOverlay width={dimensions.width} height={dimensions.height} />
+				<>
+					<CauchyContour width={dimensions.width} height={dimensions.height} />
+					<MarkersOverlay width={dimensions.width} height={dimensions.height} />
+				</>
 			)}
 		</div>
 	);

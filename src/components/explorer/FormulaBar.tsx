@@ -1,6 +1,6 @@
 import { useStore } from "@tanstack/react-store";
 import katex from "katex";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { buildFactoredLaTeX } from "@/math/formula-latex";
 import { explorerStore, setMode } from "@/store/explorer-store";
 import { ExpressionInput } from "./ExpressionInput";
@@ -24,8 +24,38 @@ function FormulaDisplay() {
 		});
 	}, [latexString]);
 
-	const copyLatex = useCallback(() => {
-		navigator.clipboard.writeText(latexString);
+	const [copied, setCopied] = useState(false);
+
+	const copyLatex = useCallback(async () => {
+		try {
+			if (navigator.clipboard?.writeText) {
+				await navigator.clipboard.writeText(latexString);
+			} else {
+				// Fallback for non-HTTPS contexts
+				const textarea = document.createElement("textarea");
+				textarea.value = latexString;
+				textarea.style.position = "fixed";
+				textarea.style.opacity = "0";
+				document.body.appendChild(textarea);
+				textarea.select();
+				document.execCommand("copy");
+				document.body.removeChild(textarea);
+			}
+			setCopied(true);
+			setTimeout(() => setCopied(false), 1500);
+		} catch {
+			// Last resort fallback
+			const textarea = document.createElement("textarea");
+			textarea.value = latexString;
+			textarea.style.position = "fixed";
+			textarea.style.opacity = "0";
+			document.body.appendChild(textarea);
+			textarea.select();
+			document.execCommand("copy");
+			document.body.removeChild(textarea);
+			setCopied(true);
+			setTimeout(() => setCopied(false), 1500);
+		}
 	}, [latexString]);
 
 	return (
@@ -40,7 +70,7 @@ function FormulaDisplay() {
 				onClick={copyLatex}
 				className="ml-3 shrink-0 rounded border px-2 py-1 font-mono text-[12px] text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
 			>
-				Copy LaTeX
+				{copied ? "Copied!" : "Copy LaTeX"}
 			</button>
 		</>
 	);

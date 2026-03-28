@@ -37,7 +37,7 @@ export function MarkersOverlay({ width, height }: MarkersOverlayProps) {
 
 	return (
 		<svg
-			className="pointer-events-none absolute inset-0"
+			className="pointer-events-none absolute inset-0 z-10"
 			width={width}
 			height={height}
 			viewBox={`0 0 ${width} ${height}`}
@@ -53,6 +53,9 @@ export function MarkersOverlay({ width, height }: MarkersOverlayProps) {
 						isSelected={item.id === selectedId}
 						pixelX={pixel.x}
 						pixelY={pixel.y}
+						itemId={item.id}
+						canvasWidth={width}
+						canvasHeight={height}
 					/>
 				);
 			})}

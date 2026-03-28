@@ -23,6 +23,7 @@ function CreateSection() {
 			<div className="flex gap-2">
 				<div
 					{...poleBind()}
+					style={{ touchAction: "none" }}
 					className="flex flex-1 cursor-grab items-center gap-1.5 rounded-sm border border-pole-bg bg-pole-bg px-2 py-1.5 active:cursor-grabbing"
 				>
 					<X className="size-3.5 text-pole" strokeWidth={2.5} />
@@ -30,6 +31,7 @@ function CreateSection() {
 				</div>
 				<div
 					{...zeroBind()}
+					style={{ touchAction: "none" }}
 					className="flex flex-1 cursor-grab items-center gap-1.5 rounded-sm border border-zero-bg bg-zero-bg px-2 py-1.5 active:cursor-grabbing"
 				>
 					<Circle className="size-3.5 text-zero" strokeWidth={2.5} />

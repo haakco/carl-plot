@@ -8,6 +8,7 @@ import { Canvas2D } from "./Canvas2D";
 import { Canvas3D } from "./Canvas3D";
 import { CoordReadout } from "./CoordReadout";
 import { FormulaBar } from "./FormulaBar";
+import { PoleZeroPanel } from "./PoleZeroPanel";
 import { Toolbox } from "./Toolbox";
 import { TopBar } from "./TopBar";
 
@@ -36,10 +37,18 @@ export function ExplorerLayout() {
 			decodeStateFromUrl();
 		}
 
+		let timer: ReturnType<typeof setTimeout> | null = null;
 		const subscription = explorerStore.subscribe(() => {
-			encodeStateToUrl();
+			if (timer) clearTimeout(timer);
+			timer = setTimeout(() => {
+				encodeStateToUrl();
+				timer = null;
+			}, 300);
 		});
-		return () => subscription.unsubscribe();
+		return () => {
+			if (timer) clearTimeout(timer);
+			subscription.unsubscribe();
+		};
 	}, []);
 
 	return (
@@ -52,6 +61,7 @@ export function ExplorerLayout() {
 				<main className="relative min-w-0 flex-1">
 					{viewMode === "2d" ? <Canvas2D /> : <Canvas3D />}
 					{viewMode === "2d" && <CoordReadout />}
+					{viewMode === "3d" && <PoleZeroPanel />}
 				</main>
 			</div>
 
