@@ -1,7 +1,7 @@
 import { enforceConjugate } from "@/lib/conjugate-pairs";
 import { explorerStore, moveSingularity } from "@/store/explorer-store";
 
-const SNAP_GRID = 4;
+const SNAP_GRID = 100;
 
 /**
  * Stability glow color for poles based on magnitude relative to the unit circle.

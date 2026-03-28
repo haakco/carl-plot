@@ -97,6 +97,9 @@ export function CauchyContour({ width, height }: CauchyContourProps) {
 	const poles = useStore(explorerStore, (s) => s.poles);
 	const zeros = useStore(explorerStore, (s) => s.zeros);
 	const gain = useStore(explorerStore, (s) => s.gain);
+	// Subscribe to viewport changes so contour re-renders at correct pixel positions after pan/zoom
+	useStore(explorerStore, (s) => s.center);
+	useStore(explorerStore, (s) => s.zoom);
 
 	const isDraggingCenterRef = useRef(false);
 	const isDraggingHandleRef = useRef(false);

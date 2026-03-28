@@ -88,6 +88,11 @@ const initialState: ExplorerState = {
 
 export const explorerStore = new Store<ExplorerState>(initialState);
 
+// Expose store for e2e testing
+if (typeof window !== "undefined") {
+	(window as any).__explorerStore = explorerStore;
+}
+
 // --- Actions ---
 
 function addSingularityPair(type: "pole" | "zero", re: number, im: number): void {

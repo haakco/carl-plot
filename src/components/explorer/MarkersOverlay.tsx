@@ -17,6 +17,9 @@ export function MarkersOverlay({ width, height }: MarkersOverlayProps) {
 	const selectedId = useStore(explorerStore, (s) => s.selectedId);
 	const showAllResidues = useStore(explorerStore, (s) => s.showAllResidues);
 	const ghostTrail = useStore(explorerStore, (s) => s.ghostTrail);
+	// Subscribe to viewport changes so markers re-render at correct pixel positions after pan/zoom
+	useStore(explorerStore, (s) => s.center);
+	useStore(explorerStore, (s) => s.zoom);
 
 	const allItems = [...poles, ...zeros];
 
