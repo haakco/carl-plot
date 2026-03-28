@@ -103,13 +103,13 @@ export function AnalysisPanel({ open, onClose }: AnalysisPanelProps) {
 
 	return (
 		<section
-			className="absolute right-3 bottom-3 z-30 flex w-[220px] flex-col gap-3 rounded-lg border border-border bg-background/95 p-3 shadow-xl backdrop-blur-sm"
+			className="absolute right-3 bottom-3 z-30 flex w-[220px] flex-col rounded-lg border border-border bg-background/95 shadow-xl backdrop-blur-sm"
 			style={dragStyle}
 			aria-label="Analysis panel"
 		>
 			{/* biome-ignore lint/a11y/useSemanticElements: drag handle needs div for pointer events */}
 			<div
-				className="flex items-center justify-between cursor-grab active:cursor-grabbing select-none"
+				className="flex items-center justify-between cursor-grab active:cursor-grabbing select-none px-3 pt-3 pb-1"
 				onPointerDown={onDragStart}
 				role="toolbar"
 				aria-label="Drag to reposition"
@@ -125,30 +125,32 @@ export function AnalysisPanel({ open, onClose }: AnalysisPanelProps) {
 				</button>
 			</div>
 
-			{isPoleZeroMode && (
-				<>
-					<ResidueSection />
-					<div className="border-t" />
-					<ImpulseSparkline />
-					<div className="border-t" />
-					<NyquistPlot />
-					<div className="border-t" />
-					<LaplaceLens />
-				</>
-			)}
+			<div className="flex flex-col gap-3 px-3 pb-3">
+				{isPoleZeroMode && (
+					<>
+						<ResidueSection />
+						<div className="border-t" />
+						<ImpulseSparkline />
+						<div className="border-t" />
+						<NyquistPlot />
+						<div className="border-t" />
+						<LaplaceLens />
+					</>
+				)}
 
-			<div className="border-t" />
-			<GainControl />
+				<div className="border-t" />
+				<GainControl />
 
-			{isPoleZeroMode && (
-				<>
-					<div className="border-t" />
-					<div>
-						<SectionLabel>Gain Sweep</SectionLabel>
-						<GainSweep />
-					</div>
-				</>
-			)}
+				{isPoleZeroMode && (
+					<>
+						<div className="border-t" />
+						<div>
+							<SectionLabel>Gain Sweep</SectionLabel>
+							<GainSweep />
+						</div>
+					</>
+				)}
+			</div>
 		</section>
 	);
 }
