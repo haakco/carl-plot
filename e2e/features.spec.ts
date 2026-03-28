@@ -32,6 +32,21 @@ async function loadSharedState(page: Page, state: Record<string, unknown>) {
 	await page.waitForSelector("canvas", { timeout: 10000 });
 }
 
+async function openExamplesDialog(page: Page) {
+	await page.getByRole("button", { name: "Examples" }).click();
+	await expect(page.getByRole("dialog").getByText("Examples")).toBeVisible({ timeout: 3000 });
+}
+
+async function openAnalysisPanel(page: Page) {
+	// Only open if not already open
+	const analysisBtn = page.getByRole("button", { name: "Analysis" });
+	const isPressed = await analysisBtn.getAttribute("aria-pressed");
+	if (isPressed !== "true") {
+		await analysisBtn.click();
+	}
+	await expect(page.locator('[aria-label="Analysis panel"]')).toBeVisible({ timeout: 3000 });
+}
+
 test.describe("Complex Explorer - Feature Tests", () => {
 	test.beforeEach(async ({ page }) => {
 		await page.addInitScript(() => {
@@ -44,10 +59,10 @@ test.describe("Complex Explorer - Feature Tests", () => {
 	// ─── Preset Loading ───────────────────────────────────────────
 
 	test("loading a preset updates placed list and URL", async ({ page }) => {
-		// Click a preset from the Examples section
+		await openExamplesDialog(page);
 		await page
+			.getByRole("dialog")
 			.getByRole("button", { name: /^Conjugate poles\b/ })
-			.first()
 			.click();
 
 		// Should see 2 poles in the placed list
@@ -60,61 +75,59 @@ test.describe("Complex Explorer - Feature Tests", () => {
 	});
 
 	test("loading Butterworth lowpass preset shows poles and zeros", async ({ page }) => {
+		await openExamplesDialog(page);
 		await page
+			.getByRole("dialog")
 			.getByRole("button", { name: /^Butterworth\b/ })
-			.first()
 			.click();
 
-		// Should have poles in placed list
 		await expect(page.locator('aside button[aria-label^="Remove pole"]')).toHaveCount(2, {
 			timeout: 3000,
 		});
 	});
 
-	test("preset categories are visible in examples section", async ({ page }) => {
-		await expect(page.getByText("Basics")).toBeVisible();
-		await expect(page.getByText("Filters")).toBeVisible();
-		// "Controls" appears both as a preset category and a section header
-		await expect(page.locator("aside span").filter({ hasText: "Controls" }).first()).toBeVisible();
+	test("preset categories are visible in examples dialog", async ({ page }) => {
+		await openExamplesDialog(page);
+		// Check the category tab buttons specifically
+		await expect(page.getByRole("dialog").getByRole("button", { name: "Basics" })).toBeVisible();
+		await expect(page.getByRole("dialog").getByRole("button", { name: "Filters" })).toBeVisible();
+		await expect(
+			page.getByRole("dialog").getByRole("button", { name: "Controls" }),
+		).toBeVisible();
 	});
 
 	// ─── Expression Mode ──────────────────────────────────────────
 
 	test("expression mode accepts input and renders", async ({ page }) => {
-		// Switch to expression mode
 		const modeBtn = page.locator('button:has-text("f(z)=")');
 		await modeBtn.click();
 
 		const input = page.locator('input[placeholder*="expression"]');
 		await expect(input).toBeVisible();
 
-		// Type an expression
 		await input.fill("z^2");
 		await input.press("Enter");
 
-		// Canvas should still be present (rendering the expression)
 		await expect(page.locator("canvas")).toBeVisible();
 	});
 
-	test("expression mode hides pole/zero analysis panels", async ({ page }) => {
-		// Default mode should show analysis sections
-		await expect(page.getByText("h[n] impulse response")).toBeVisible({ timeout: 3000 });
+	test("expression mode hides analysis button", async ({ page }) => {
+		// Default mode should show Analysis button
+		await expect(page.getByRole("button", { name: "Analysis" })).toBeVisible();
 
 		// Switch to expression mode
 		await page.locator('button:has-text("f(z)=")').click();
 
-		// Impulse sparkline label should disappear
-		await expect(page.getByText("h[n] impulse response")).not.toBeVisible({ timeout: 3000 });
+		// Analysis button should disappear (pole-zero only)
+		await expect(page.getByRole("button", { name: "Analysis" })).not.toBeVisible({ timeout: 3000 });
 	});
 
-	test("switching back from expression mode restores analysis panels", async ({ page }) => {
-		// Switch to expression mode
+	test("switching back from expression mode restores analysis button", async ({ page }) => {
 		await page.locator('button:has-text("f(z)=")').click();
-		await expect(page.getByText("h[n] impulse response")).not.toBeVisible({ timeout: 3000 });
+		await expect(page.getByRole("button", { name: "Analysis" })).not.toBeVisible({ timeout: 3000 });
 
-		// Switch back
 		await page.locator('button:has-text("P/Z")').click();
-		await expect(page.getByText("h[n] impulse response")).toBeVisible({ timeout: 3000 });
+		await expect(page.getByRole("button", { name: "Analysis" })).toBeVisible({ timeout: 3000 });
 	});
 
 	// ─── Settings Panel ───────────────────────────────────────────
@@ -125,12 +138,10 @@ test.describe("Complex Explorer - Feature Tests", () => {
 
 		await settingsBtn.click();
 
-		// Verify toggle labels exist
 		await expect(page.getByText("Modulus contours")).toBeVisible({ timeout: 3000 });
 		await expect(page.getByText("Phase contours")).toBeVisible();
 		await expect(page.getByText("Grid lines")).toBeVisible();
 
-		// Toggle a setting
 		await page.getByText("Phase contours").click();
 	});
 
@@ -142,7 +153,6 @@ test.describe("Complex Explorer - Feature Tests", () => {
 		const darkModeToggle = page.getByText("Dark mode");
 		if (await darkModeToggle.isVisible()) {
 			await darkModeToggle.click();
-			// Canvas should still be visible after mode change
 			await expect(page.locator("canvas")).toBeVisible();
 		}
 	});
@@ -150,24 +160,20 @@ test.describe("Complex Explorer - Feature Tests", () => {
 	// ─── Stability Legend ─────────────────────────────────────────
 
 	test("stability legend appears when poles exist", async ({ page }) => {
-		// Default state has a pole, legend should be visible
 		await expect(page.getByText("Pole stability")).toBeVisible({ timeout: 3000 });
 		await expect(page.getByText("Stable (|p| < 1)")).toBeVisible();
 		await expect(page.getByText("Unstable (|p| > 1)")).toBeVisible();
 	});
 
 	test("stability legend hides when no poles exist", async ({ page }) => {
-		// Clear all poles and zeros
 		await runCommand(page, "Clear all poles/zeros");
-
-		// Legend should disappear
 		await expect(page.getByText("Pole stability")).not.toBeVisible({ timeout: 3000 });
 	});
 
 	// ─── Impulse Response ─────────────────────────────────────────
 
 	test("impulse sparkline shows stable indicator for default state", async ({ page }) => {
-		// Default state has pole inside unit circle at origin
+		await openAnalysisPanel(page);
 		await expect(page.getByText("h[n] impulse response")).toBeVisible({ timeout: 3000 });
 	});
 
@@ -176,7 +182,7 @@ test.describe("Complex Explorer - Feature Tests", () => {
 			p: [[1.5, 0]],
 			z: [],
 		});
-		// The impulse sparkline SVG has aria-label indicating stability
+		await openAnalysisPanel(page);
 		await expect(page.locator('[aria-label="Impulse response: unstable (growing)"]')).toBeVisible({
 			timeout: 5000,
 		});
@@ -185,13 +191,13 @@ test.describe("Complex Explorer - Feature Tests", () => {
 	// ─── Nyquist Plot ─────────────────────────────────────────────
 
 	test("nyquist plot is visible with poles and zeros", async ({ page }) => {
+		await openAnalysisPanel(page);
 		await expect(
 			page.locator('[aria-label="Nyquist plot showing frequency response"]'),
 		).toBeVisible({ timeout: 3000 });
 	});
 
 	test("nyquist plot renders for multiple pole/zero system", async ({ page }) => {
-		// Load a system with conjugate poles (known to produce crossings)
 		await loadSharedState(page, {
 			p: [
 				[0.5, 0.5],
@@ -200,8 +206,7 @@ test.describe("Complex Explorer - Feature Tests", () => {
 			z: [[-0.5, 0]],
 			g: 2,
 		});
-
-		// Nyquist plot SVG should be visible
+		await openAnalysisPanel(page);
 		await expect(
 			page.locator('[aria-label="Nyquist plot showing frequency response"]'),
 		).toBeVisible({ timeout: 5000 });
@@ -210,14 +215,11 @@ test.describe("Complex Explorer - Feature Tests", () => {
 	// ─── Laplace Lens ─────────────────────────────────────────────
 
 	test("laplace lens appears when cursor moves over canvas", async ({ page }) => {
-		// Laplace lens only renders when cursorZ is set (mouse over canvas)
-		// Initially it should not be visible
+		await openAnalysisPanel(page);
 		await expect(page.getByText("Laplace lens")).not.toBeVisible({ timeout: 1000 });
 
-		// Move cursor over canvas to trigger cursorZ update
 		await moveMouseToCanvasPoint(page, 0.6, 0.4);
 
-		// Now the lens should render with magnitude and waveform
 		await expect(page.getByText("Laplace lens")).toBeVisible({ timeout: 5000 });
 		await expect(page.locator('[aria-label="Output waveform at cursor frequency"]')).toBeVisible({
 			timeout: 3000,
@@ -227,14 +229,13 @@ test.describe("Complex Explorer - Feature Tests", () => {
 	// ─── Gain Controls ────────────────────────────────────────────
 
 	test("gain slider is visible and adjustable", async ({ page }) => {
+		await openAnalysisPanel(page);
 		const gainSlider = page.locator('input[aria-label^="Gain K:"]');
 		await expect(gainSlider).toBeVisible({ timeout: 3000 });
 
-		// Adjust gain slider
 		await gainSlider.fill("2");
 		await gainSlider.press("Enter");
 
-		// URL should reflect gain change
 		await page.waitForTimeout(500);
 		const decoded = await page.evaluate(() => {
 			const hash = window.location.hash.slice(1);
@@ -251,10 +252,12 @@ test.describe("Complex Explorer - Feature Tests", () => {
 	});
 
 	test("gain sweep play button is visible", async ({ page }) => {
+		await openAnalysisPanel(page);
 		await expect(page.locator('[aria-label="Play gain sweep"]')).toBeVisible({ timeout: 3000 });
 	});
 
 	test("gain sweep min/max inputs exist", async ({ page }) => {
+		await openAnalysisPanel(page);
 		await expect(page.locator('[aria-label="Sweep minimum gain"]')).toBeVisible({ timeout: 3000 });
 		await expect(page.locator('[aria-label="Sweep maximum gain"]')).toBeVisible();
 	});
@@ -262,17 +265,13 @@ test.describe("Complex Explorer - Feature Tests", () => {
 	// ─── Conformal Grid ───────────────────────────────────────────
 
 	test("conformal grid toggles via command palette", async ({ page }) => {
-		// Toggle conformal grid on
 		await runCommand(page, "Toggle conformal grid");
-
-		// SVG grid should appear
 		await expect(
 			page.locator(
 				'[aria-label="Conformal mapping grid showing how the transfer function deforms the complex plane"]',
 			),
 		).toBeVisible({ timeout: 3000 });
 
-		// Toggle off
 		await runCommand(page, "Toggle conformal grid");
 		await expect(
 			page.locator(
@@ -284,16 +283,17 @@ test.describe("Complex Explorer - Feature Tests", () => {
 	// ─── Residue Labels ───────────────────────────────────────────
 
 	test("residue section shows with poles present", async ({ page }) => {
+		await openAnalysisPanel(page);
 		await expect(page.getByText("Residues")).toBeVisible({ timeout: 3000 });
 	});
 
 	test("residue labels toggle via button", async ({ page }) => {
+		await openAnalysisPanel(page);
 		const showBtn = page.getByRole("button", { name: "Show labels" });
 		if (await showBtn.isVisible({ timeout: 3000 })) {
 			await showBtn.click();
 			await expect(page.getByRole("button", { name: "Hide labels" })).toBeVisible();
 
-			// Toggle back
 			await page.getByRole("button", { name: "Hide labels" }).click();
 			await expect(page.getByRole("button", { name: "Show labels" })).toBeVisible();
 		}
@@ -302,7 +302,6 @@ test.describe("Complex Explorer - Feature Tests", () => {
 	// ─── Selection & Editing ──────────────────────────────────────
 
 	test("clicking a pole in placed list selects it", async ({ page }) => {
-		// Click on the pole label in the placed list
 		const poleItem = page
 			.locator('[aria-label*="Pole at"][aria-label*="double-click to edit"]')
 			.first();
@@ -311,13 +310,8 @@ test.describe("Complex Explorer - Feature Tests", () => {
 	});
 
 	test("removing a pole updates the placed list", async ({ page }) => {
-		// Should have default pole
 		await expect(page.locator('aside button[aria-label^="Remove pole"]')).toHaveCount(1);
-
-		// Remove it
 		await page.locator('aside button[aria-label^="Remove pole"]').first().click();
-
-		// Should be gone
 		await expect(page.locator('aside button[aria-label^="Remove pole"]')).toHaveCount(0);
 	});
 
@@ -330,17 +324,14 @@ test.describe("Complex Explorer - Feature Tests", () => {
 	// ─── Undo / Redo ─────────────────────────────────────────────
 
 	test("redo restores undone action", async ({ page }) => {
-		// Add a pole
 		const poleDrag = page.locator('[aria-label*="Create pole"]');
 		await poleDrag.focus();
 		await poleDrag.press("Enter");
 		await expect(page.locator('aside button[aria-label^="Remove pole"]')).toHaveCount(2);
 
-		// Undo
 		await page.keyboard.press("Meta+z");
 		await expect(page.locator('aside button[aria-label^="Remove pole"]')).toHaveCount(1);
 
-		// Redo
 		await page.keyboard.press("Meta+Shift+z");
 		await expect(page.locator('aside button[aria-label^="Remove pole"]')).toHaveCount(2);
 	});
@@ -348,14 +339,11 @@ test.describe("Complex Explorer - Feature Tests", () => {
 	// ─── Formula Bar ──────────────────────────────────────────────
 
 	test("formula bar shows factored and expanded forms", async ({ page }) => {
-		// Default should show formula bar
 		await expect(page.locator('button:has-text("f(z)=")')).toBeVisible();
 
-		// Look for expanded/factored toggle
 		const expandedBtn = page.getByRole("button", { name: /Expanded|Factored/ });
 		if (await expandedBtn.isVisible({ timeout: 2000 })) {
 			await expandedBtn.click();
-			// Should toggle between forms
 			await expect(page.locator("canvas")).toBeVisible();
 		}
 	});
@@ -377,7 +365,6 @@ test.describe("Complex Explorer - Feature Tests", () => {
 			zm: 2.5,
 		});
 
-		// Reset view
 		await runCommand(page, "Reset view");
 
 		await page.waitForTimeout(500);
@@ -408,13 +395,11 @@ test.describe("Complex Explorer - Feature Tests", () => {
 	});
 
 	test("undo command works from palette", async ({ page }) => {
-		// Add a pole
 		const poleDrag = page.locator('[aria-label*="Create pole"]');
 		await poleDrag.focus();
 		await poleDrag.press("Enter");
 		await expect(page.locator('aside button[aria-label^="Remove pole"]')).toHaveCount(2);
 
-		// Undo via command palette
 		await runCommand(page, "Undo");
 		await expect(page.locator('aside button[aria-label^="Remove pole"]')).toHaveCount(1);
 	});
@@ -493,7 +478,6 @@ test.describe("Complex Explorer - Feature Tests", () => {
 	// ─── URL State Persistence ────────────────────────────────────
 
 	test("expression mode is preserved in URL", async ({ page }) => {
-		// Switch to expression mode
 		await page.locator('button:has-text("f(z)=")').click();
 		const input = page.locator('input[placeholder*="expression"]');
 		await input.fill("z^2 + 1");
@@ -524,7 +508,7 @@ test.describe("Complex Explorer - Feature Tests", () => {
 			g: 3,
 		});
 
-		// Verify gain slider shows loaded value
+		await openAnalysisPanel(page);
 		const gainSlider = page.locator('input[aria-label^="Gain K:"]');
 		await expect(gainSlider).toBeVisible({ timeout: 3000 });
 	});
@@ -535,7 +519,6 @@ test.describe("Complex Explorer - Feature Tests", () => {
 		await page.getByRole("button", { name: "3D" }).click();
 		await expect(page.locator("canvas")).toBeVisible();
 
-		// 3D view should show the Poles & Zeros button/section
 		await expect(page.getByRole("button", { name: "Poles & Zeros" })).toBeVisible({
 			timeout: 5000,
 		});
@@ -545,22 +528,18 @@ test.describe("Complex Explorer - Feature Tests", () => {
 		await page.getByRole("button", { name: "3D" }).click();
 		await expect(page.locator("canvas")).toBeVisible();
 
-		// Look for add pole button in 3D panel
 		const addPoleBtn = page.getByRole("button", { name: /Add.*pole/i });
 		if (await addPoleBtn.isVisible({ timeout: 3000 })) {
 			await addPoleBtn.click();
-			// Should see more poles
 		}
 	});
 });
 
 test.describe("Complex Explorer - Tutorial", () => {
 	test("tutorial shows on first visit", async ({ page }) => {
-		// Do NOT dismiss tutorial in localStorage
 		await page.goto("/");
 		await page.waitForSelector("canvas", { timeout: 10000 });
 
-		// Tutorial should be visible
 		await expect(page.getByText("Welcome to the Complex Explorer")).toBeVisible({ timeout: 5000 });
 	});
 
@@ -571,7 +550,6 @@ test.describe("Complex Explorer - Tutorial", () => {
 		await expect(page.getByText("Welcome to the Complex Explorer")).toBeVisible({ timeout: 5000 });
 		await page.getByRole("button", { name: "Skip tutorial" }).click();
 
-		// Tutorial should be gone
 		await expect(page.getByText("Welcome to the Complex Explorer")).not.toBeVisible({
 			timeout: 3000,
 		});
@@ -583,45 +561,36 @@ test.describe("Complex Explorer - Tutorial", () => {
 
 		await expect(page.getByText("Welcome to the Complex Explorer")).toBeVisible({ timeout: 5000 });
 
-		// Go to next step
 		await page.getByRole("button", { name: "Next" }).click();
 		await expect(page.getByText("Adding Poles & Zeros")).toBeVisible({ timeout: 3000 });
 
-		// Go to next step
 		await page.getByRole("button", { name: "Next" }).click();
 		await expect(page.getByText("Dragging & Editing")).toBeVisible({ timeout: 3000 });
 
-		// Go back
 		await page.getByRole("button", { name: "Back" }).click();
 		await expect(page.getByText("Adding Poles & Zeros")).toBeVisible({ timeout: 3000 });
 	});
 
 	test("tutorial restart command removes dismissed state", async ({ page }) => {
-		// Manually dismiss the tutorial first (not using addInitScript so reload works)
 		await page.goto("/");
 		await page.waitForSelector("canvas", { timeout: 10000 });
 
-		// Tutorial shows on first visit — dismiss it
 		await expect(page.getByText("Welcome to the Complex Explorer")).toBeVisible({ timeout: 5000 });
 		await page.getByRole("button", { name: "Skip tutorial" }).click();
 		await expect(page.getByText("Welcome to the Complex Explorer")).not.toBeVisible({
 			timeout: 3000,
 		});
 
-		// Verify localStorage was set
 		const dismissed = await page.evaluate(() =>
 			localStorage.getItem("complex-explorer-tutorial-dismissed"),
 		);
 		expect(dismissed).toBe("true");
 
-		// Restart via command palette — this removes localStorage key and reloads
 		await openCommandPalette(page);
 		await page.locator("[cmdk-item]").filter({ hasText: "Restart tutorial" }).click();
 
-		// Wait for the page to reload
 		await page.waitForSelector("canvas", { timeout: 10000 });
 
-		// Tutorial should be visible again after reload
 		await expect(page.getByText("Welcome to the Complex Explorer")).toBeVisible({ timeout: 5000 });
 	});
 
@@ -632,11 +601,9 @@ test.describe("Complex Explorer - Tutorial", () => {
 		await expect(page.getByText("Welcome to the Complex Explorer")).toBeVisible({ timeout: 5000 });
 		await page.getByRole("button", { name: "Skip tutorial" }).click();
 
-		// Reload the page
 		await page.reload();
 		await page.waitForSelector("canvas", { timeout: 10000 });
 
-		// Tutorial should still be dismissed
 		await expect(page.getByText("Welcome to the Complex Explorer")).not.toBeVisible({
 			timeout: 3000,
 		});
@@ -653,7 +620,6 @@ test.describe("Complex Explorer - Multiplicity & Ghost Trail", () => {
 	});
 
 	test("multiplicity badge shows for coincident poles", async ({ page }) => {
-		// Load two poles at the same location
 		await loadSharedState(page, {
 			p: [
 				[0.5, 0],
@@ -662,17 +628,16 @@ test.describe("Complex Explorer - Multiplicity & Ghost Trail", () => {
 			z: [],
 		});
 
-		// Should see "×2" badge (may appear on multiple SVG elements)
 		await expect(page.getByText("×2").first()).toBeVisible({ timeout: 5000 });
 	});
 
 	test("double pole at origin preset shows multiplicity", async ({ page }) => {
+		await openExamplesDialog(page);
 		await page
+			.getByRole("dialog")
 			.getByRole("button", { name: /^Double pole at origin\b/ })
-			.first()
 			.click();
 
-		// Should see multiplicity badge (may appear multiple times for each marker)
 		await expect(page.getByText("×2").first()).toBeVisible({ timeout: 5000 });
 	});
 });

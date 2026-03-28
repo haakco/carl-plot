@@ -13,9 +13,11 @@ import {
 	setSelectedId,
 	undo,
 } from "@/store/explorer-store";
+import { AnalysisPanel } from "./AnalysisPanel";
 import { Canvas2D } from "./Canvas2D";
 import { Canvas3D } from "./Canvas3D";
 import { CoordReadout } from "./CoordReadout";
+import { ExamplesDialog } from "./ExamplesDialog";
 import { FormulaBar } from "./FormulaBar";
 import { PoleZeroPanel } from "./PoleZeroPanel";
 import { StabilityLegend } from "./StabilityLegend";
@@ -44,6 +46,8 @@ function A11yAnnouncer() {
 export function ExplorerLayout() {
 	const viewMode = useStore(explorerStore, (s) => s.viewMode);
 	const hasInitialized = useRef(false);
+	const [examplesOpen, setExamplesOpen] = useState(false);
+	const [analysisOpen, setAnalysisOpen] = useState(false);
 
 	useHotkeys("delete, backspace", () => {
 		const { selectedId } = explorerStore.state;
@@ -123,19 +127,25 @@ export function ExplorerLayout() {
 			<TopBar />
 
 			<div className="flex min-h-0 flex-1">
-				<Toolbox />
+				<Toolbox
+					onOpenExamples={() => setExamplesOpen(true)}
+					onToggleAnalysis={() => setAnalysisOpen((prev) => !prev)}
+					analysisOpen={analysisOpen}
+				/>
 
 				<main className="relative min-w-0 flex-1" aria-label="Complex plane visualization">
 					{viewMode === "2d" ? <Canvas2D /> : <Canvas3D />}
 					{viewMode === "2d" && <CoordReadout />}
 					{viewMode === "2d" && <StabilityLegend />}
 					{viewMode === "3d" && <PoleZeroPanel />}
+					<AnalysisPanel open={analysisOpen} onClose={() => setAnalysisOpen(false)} />
 					<Tutorial />
 				</main>
 			</div>
 
 			<FormulaBar />
 			<CommandMenu />
+			<ExamplesDialog open={examplesOpen} onOpenChange={setExamplesOpen} />
 
 			{/* Screen reader announcements for pole/zero events */}
 			<A11yAnnouncer />

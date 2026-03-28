@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { explorerStore, reset } from "@/store/explorer-store";
 import { Toolbox } from "./Toolbox";
@@ -11,59 +11,58 @@ vi.mock("./PlacedList", () => ({
 	PlacedList: () => <div>Placed list</div>,
 }));
 
-vi.mock("./ImpulseSparkline", () => ({
-	ImpulseSparkline: () => <div>h[n] impulse response</div>,
-}));
-
-vi.mock("./NyquistPlot", () => ({
-	NyquistPlot: () => <div>Nyquist plot</div>,
-}));
-
-vi.mock("./LaplaceLens", () => ({
-	LaplaceLens: () => <div>Laplace lens</div>,
-}));
-
-vi.mock("./GainSweep", () => ({
-	GainSweep: () => <div>Gain sweep</div>,
-}));
-
 beforeEach(() => {
 	reset();
 });
 
 describe("Toolbox", () => {
-	it("shows pole-zero analysis panels in poles-zeros mode", () => {
-		render(<Toolbox />);
+	const defaultProps = {
+		onOpenExamples: vi.fn(),
+		onToggleAnalysis: vi.fn(),
+		analysisOpen: false,
+	};
 
-		expect(screen.getByText("Residues")).toBeTruthy();
-		expect(screen.getByText("h[n] impulse response")).toBeTruthy();
-		expect(screen.getByText("Nyquist plot")).toBeTruthy();
-		expect(screen.getByText("Laplace lens")).toBeTruthy();
-		expect(screen.getByText("Gain sweep")).toBeTruthy();
+	it("shows Examples and Analysis buttons in poles-zeros mode", () => {
+		render(<Toolbox {...defaultProps} />);
+
+		expect(screen.getByRole("button", { name: "Examples" })).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Analysis" })).toBeTruthy();
 	});
 
-	it("hides pole-zero analysis panels in expression mode", () => {
+	it("hides Analysis button in expression mode", () => {
 		explorerStore.setState((prev) => ({
 			...prev,
 			mode: "expression",
 			expression: "sin(z)",
 		}));
 
-		render(<Toolbox />);
+		render(<Toolbox {...defaultProps} />);
 
-		expect(screen.queryByText("Residues")).toBeNull();
-		expect(screen.queryByText("h[n] impulse response")).toBeNull();
-		expect(screen.queryByText("Nyquist plot")).toBeNull();
-		expect(screen.queryByText("Laplace lens")).toBeNull();
-		expect(screen.queryByText("Gain sweep")).toBeNull();
+		expect(screen.getByRole("button", { name: "Examples" })).toBeTruthy();
+		expect(screen.queryByRole("button", { name: "Analysis" })).toBeNull();
 	});
 
-	it("renders thumbnail cards for pole-zero and expression examples", () => {
-		render(<Toolbox />);
+	it("calls onOpenExamples when Examples button is clicked", async () => {
+		const onOpenExamples = vi.fn();
+		render(<Toolbox {...defaultProps} onOpenExamples={onOpenExamples} />);
 
-		expect(screen.getByRole("button", { name: /Joukowski airfoil/i })).toBeTruthy();
-		expect(screen.getByRole("button", { name: /Riemann zeta approximation/i })).toBeTruthy();
-		expect(screen.getByLabelText(/preview of Möbius transform/i)).toBeTruthy();
-		expect(screen.getByLabelText(/preview of Joukowski airfoil/i)).toBeTruthy();
+		fireEvent.click(screen.getByRole("button", { name: "Examples" }));
+		expect(onOpenExamples).toHaveBeenCalledOnce();
+	});
+
+	it("calls onToggleAnalysis when Analysis button is clicked", async () => {
+		const onToggleAnalysis = vi.fn();
+		render(<Toolbox {...defaultProps} onToggleAnalysis={onToggleAnalysis} />);
+
+		fireEvent.click(screen.getByRole("button", { name: "Analysis" }));
+		expect(onToggleAnalysis).toHaveBeenCalledOnce();
+	});
+
+	it("shows Analysis button as pressed when analysisOpen is true", () => {
+		render(<Toolbox {...defaultProps} analysisOpen={true} />);
+
+		expect(screen.getByRole("button", { name: "Analysis" }).getAttribute("aria-pressed")).toBe(
+			"true",
+		);
 	});
 });

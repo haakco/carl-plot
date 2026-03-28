@@ -1,5 +1,5 @@
 import { stat } from "node:fs/promises";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 
 function encodeUrlState(state: Record<string, unknown>): string {
 	return Buffer.from(JSON.stringify(state)).toString("base64");
@@ -22,7 +22,7 @@ async function openCommandPalette(page: Page) {
 
 async function runCommand(page: Page, label: string) {
 	await openCommandPalette(page);
-	await page.locator('[cmdk-item]').filter({ hasText: label }).click();
+	await page.locator("[cmdk-item]").filter({ hasText: label }).click();
 }
 
 async function loadSharedState(page: Page, state: Record<string, unknown>) {
@@ -45,7 +45,9 @@ test.describe("Complex Explorer - Core Interactions", () => {
 	});
 
 	test("page loads with title and main layout", async ({ page }) => {
-		await expect(page.locator("header").getByText("Complex Explorer", { exact: true })).toBeVisible();
+		await expect(
+			page.locator("header").getByText("Complex Explorer", { exact: true }),
+		).toBeVisible();
 		await expect(page.locator("canvas")).toBeVisible();
 	});
 
@@ -107,7 +109,9 @@ test.describe("Complex Explorer - Core Interactions", () => {
 
 	test("settings panel opens", async ({ page }) => {
 		// Find and click the settings trigger
-		const settingsBtn = page.locator('[aria-label*="ettings"], button:has-text("Settings")').first();
+		const settingsBtn = page
+			.locator('[aria-label*="ettings"], button:has-text("Settings")')
+			.first();
 		if (await settingsBtn.isVisible()) {
 			await settingsBtn.click();
 			// Settings content should be visible
@@ -136,8 +140,9 @@ test.describe("Complex Explorer - Core Interactions", () => {
 		expect(url).toContain("#");
 	});
 
-	test("presets are listed in the Examples section", async ({ page }) => {
-		await expect(page.locator("text=Examples")).toBeVisible();
+	test("examples button opens the examples dialog", async ({ page }) => {
+		await page.getByRole("button", { name: "Examples" }).click();
+		await expect(page.getByRole("dialog").getByText("Examples")).toBeVisible();
 	});
 
 	test("cursor readout uses loaded center and zoom from shared URL", async ({ page }) => {
@@ -185,7 +190,12 @@ test.describe("Complex Explorer - Core Interactions", () => {
 	});
 
 	test("keyboard nudging preserves conjugate symmetry", async ({ page }) => {
-		await page.getByRole("button", { name: /^Conjugate poles\b/ }).first().click();
+		// Open examples dialog and select Conjugate poles preset
+		await page.getByRole("button", { name: "Examples" }).click();
+		await page
+			.getByRole("dialog")
+			.getByRole("button", { name: /^Conjugate poles\b/ })
+			.click();
 		await expect(page.getByLabel("Pole at 1.00 + 1.00i, double-click to edit")).toBeVisible();
 
 		await page.getByLabel("Pole at 1.00 + 1.00i, double-click to edit").click();
