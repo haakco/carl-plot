@@ -6,7 +6,7 @@ import type { Complex } from "@/math/complex";
 import { formatComplex } from "@/math/complex";
 import { explorerStore, removeSingularity, setSelectedId } from "@/store/explorer-store";
 
-function EditableValue({ item, isSelected }: { item: Complex; isSelected: boolean }) {
+export function EditableValue({ item, isSelected }: { item: Complex; isSelected: boolean }) {
 	const [editing, setEditing] = useState(false);
 	const [editValue, setEditValue] = useState("");
 	const inputRef = useRef<HTMLInputElement>(null);

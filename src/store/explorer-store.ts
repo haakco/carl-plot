@@ -1,6 +1,7 @@
 import { Store } from "@tanstack/store";
 import { nanoid } from "nanoid";
 import { type Complex, createComplex } from "../math/complex";
+import { extractRootsFromExpression } from "../math/extract-roots";
 import type { Preset } from "./presets";
 
 export interface ExplorerState {
@@ -131,8 +132,79 @@ export function moveSingularity(id: string, re: number, im: number): void {
 	}));
 }
 
+/** Check if two roots are conjugates of each other (re ≈ re, im ≈ -im). */
+function isConjugatePair(a: { re: number; im: number }, b: { re: number; im: number }): boolean {
+	return Math.abs(a.re - b.re) < 0.01 && Math.abs(a.im + b.im) < 0.01;
+}
+
+/** Find the index of a conjugate partner for roots[i] in unused roots. */
+function findConjugateIndex(
+	roots: { re: number; im: number }[],
+	i: number,
+	used: Set<number>,
+): number {
+	for (let j = i + 1; j < roots.length; j++) {
+		if (!used.has(j) && isConjugatePair(roots[i], roots[j])) return j;
+	}
+	return -1;
+}
+
+/** Create a list of Complex items, linking conjugate pairs when enforced. */
+function buildWithConjugates(
+	type: "pole" | "zero",
+	roots: { re: number; im: number }[],
+	enforceConjugates: boolean,
+): Complex[] {
+	if (!enforceConjugates) {
+		return roots.map((r) => createComplex(type, r.re, r.im));
+	}
+
+	const result: Complex[] = [];
+	const used = new Set<number>();
+
+	for (let i = 0; i < roots.length; i++) {
+		if (used.has(i)) continue;
+		const r = roots[i];
+		const conjugateIdx = Math.abs(r.im) > 0.01 ? findConjugateIndex(roots, i, used) : -1;
+
+		if (conjugateIdx >= 0) {
+			const id1 = nanoid();
+			const id2 = nanoid();
+			result.push({ id: id1, type, re: r.re, im: r.im, pairId: id2 });
+			result.push({
+				id: id2,
+				type,
+				re: roots[conjugateIdx].re,
+				im: roots[conjugateIdx].im,
+				pairId: id1,
+			});
+			used.add(i);
+			used.add(conjugateIdx);
+		} else {
+			result.push(createComplex(type, r.re, r.im));
+			used.add(i);
+		}
+	}
+
+	return result;
+}
+
 export function setMode(mode: "poles-zeros" | "expression"): void {
-	explorerStore.setState((prev) => ({ ...prev, mode }));
+	explorerStore.setState((prev) => {
+		if (mode === "poles-zeros" && prev.mode === "expression" && prev.expression) {
+			const extracted = extractRootsFromExpression(prev.expression);
+			if (extracted) {
+				return {
+					...prev,
+					mode,
+					poles: buildWithConjugates("pole", extracted.poles, prev.enforceConjugates),
+					zeros: buildWithConjugates("zero", extracted.zeros, prev.enforceConjugates),
+					gain: extracted.gain,
+				};
+			}
+		}
+		return { ...prev, mode };
+	});
 }
 
 export function setExpression(expression: string): void {

@@ -33,35 +33,28 @@ function FormulaDisplay() {
 	const [copied, setCopied] = useState(false);
 
 	const copyLatex = useCallback(async () => {
-		try {
-			if (navigator.clipboard?.writeText) {
-				await navigator.clipboard.writeText(latexString);
-			} else {
-				// Fallback for non-HTTPS contexts
-				const textarea = document.createElement("textarea");
-				textarea.value = latexString;
-				textarea.style.position = "fixed";
-				textarea.style.opacity = "0";
-				document.body.appendChild(textarea);
-				textarea.select();
-				document.execCommand("copy");
-				document.body.removeChild(textarea);
-			}
-			setCopied(true);
-			setTimeout(() => setCopied(false), 1500);
-		} catch {
-			// Last resort fallback
+		const fallbackCopy = (text: string) => {
 			const textarea = document.createElement("textarea");
-			textarea.value = latexString;
+			textarea.value = text;
 			textarea.style.position = "fixed";
 			textarea.style.opacity = "0";
 			document.body.appendChild(textarea);
 			textarea.select();
 			document.execCommand("copy");
 			document.body.removeChild(textarea);
-			setCopied(true);
-			setTimeout(() => setCopied(false), 1500);
+		};
+
+		try {
+			if (navigator.clipboard?.writeText) {
+				await navigator.clipboard.writeText(latexString);
+			} else {
+				fallbackCopy(latexString);
+			}
+		} catch {
+			fallbackCopy(latexString);
 		}
+		setCopied(true);
+		setTimeout(() => setCopied(false), 1500);
 	}, [latexString]);
 
 	return (
