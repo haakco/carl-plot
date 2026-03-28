@@ -1,5 +1,6 @@
 import { useStore } from "@tanstack/react-store";
 import { useMemo } from "react";
+import { PanelChrome } from "@/components/common/PanelChrome";
 import { evaluateRational } from "@/math/evaluate-rational";
 import { explorerStore } from "@/store/explorer-store";
 
@@ -56,10 +57,7 @@ export function LaplaceLens() {
 		.join("");
 
 	return (
-		<div className="flex flex-col gap-1">
-			<div className="flex items-center justify-between">
-				<span className="text-[10px] text-muted-foreground">Laplace lens</span>
-			</div>
+		<PanelChrome title="Laplace lens">
 			<div className="flex gap-2">
 				<div className="flex flex-col gap-0.5 text-[10px]">
 					<span className="text-muted-foreground">
@@ -95,6 +93,6 @@ export function LaplaceLens() {
 					<path d={sparkPath} fill="none" stroke="oklch(0.7 0.12 250)" strokeWidth={1} />
 				</svg>
 			</div>
-		</div>
+		</PanelChrome>
 	);
 }

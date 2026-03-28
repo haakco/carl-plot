@@ -344,6 +344,16 @@ export function reset(): void {
 	explorerStore.setState(() => ({ ...initialState }));
 }
 
+export function resetView(): void {
+	explorerStore.setState((prev) => ({
+		...prev,
+		center: { re: 0, im: 0 },
+		zoom: 1,
+		cursorZ: null,
+		ghostTrail: [],
+	}));
+}
+
 export function clearAll(): void {
 	explorerStore.setState((prev) => ({
 		...prev,

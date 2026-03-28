@@ -12,6 +12,7 @@ import {
 	redo,
 	removeSingularity,
 	reset,
+	resetView,
 	setCenter,
 	setCursorZ,
 	setGain,
@@ -224,6 +225,23 @@ describe("clearAll", () => {
 
 		expect(explorerStore.state.center).toEqual({ re: 5, im: 3 });
 		expect(explorerStore.state.zoom).toBe(2);
+	});
+});
+
+describe("resetView", () => {
+	it("resets center and zoom without touching the current function", () => {
+		addPole(3, 0);
+		setGain(4);
+		setCenter(5, 3);
+		setZoom(2);
+
+		resetView();
+
+		expect(explorerStore.state.center).toEqual({ re: 0, im: 0 });
+		expect(explorerStore.state.zoom).toBe(1);
+		expect(explorerStore.state.gain).toBe(4);
+		expect(explorerStore.state.poles).toHaveLength(2);
+		expect(explorerStore.state.zeros).toHaveLength(1);
 	});
 });
 

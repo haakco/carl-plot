@@ -1,4 +1,6 @@
 import { useStore } from "@tanstack/react-store";
+import { useMemo } from "react";
+import { createExpressionValueEvaluator } from "@/math/evaluate-expression";
 import { evaluateRational } from "@/math/evaluate-rational";
 import { explorerStore } from "@/store/explorer-store";
 
@@ -18,13 +20,30 @@ function formatComplexFz(re: number, im: number): string {
 
 export function CoordReadout() {
 	const cursorZ = useStore(explorerStore, (s) => s.cursorZ);
+	const mode = useStore(explorerStore, (s) => s.mode);
+	const expression = useStore(explorerStore, (s) => s.expression);
 	const poles = useStore(explorerStore, (s) => s.poles);
 	const zeros = useStore(explorerStore, (s) => s.zeros);
 	const gain = useStore(explorerStore, (s) => s.gain);
 
+	const expressionEvaluator = useMemo(() => {
+		if (mode !== "expression" || !expression) return null;
+		return createExpressionValueEvaluator(expression);
+	}, [mode, expression]);
+
 	if (!cursorZ) return null;
 
-	const fz = evaluateRational(cursorZ, poles, zeros, gain);
+	const expressionValue =
+		mode === "expression" && expressionEvaluator
+			? expressionEvaluator(cursorZ.re, cursorZ.im)
+			: null;
+
+	const fz =
+		mode === "expression"
+			? expressionValue
+				? { re: expressionValue.re, im: expressionValue.im }
+				: { re: Number.POSITIVE_INFINITY, im: Number.POSITIVE_INFINITY }
+			: evaluateRational(cursorZ, poles, zeros, gain);
 	const modulus = Math.sqrt(fz.re * fz.re + fz.im * fz.im);
 	const isInfinite = modulus > 1e6;
 	const phase = (Math.atan2(fz.im, fz.re) * 180) / Math.PI;

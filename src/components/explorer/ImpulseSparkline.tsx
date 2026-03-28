@@ -1,5 +1,6 @@
 import { useStore } from "@tanstack/react-store";
 import { useMemo } from "react";
+import { PanelChrome, PanelSurface } from "@/components/common/PanelChrome";
 import { computeImpulseResponse, isSystemStable } from "@/math/impulse-response";
 import { explorerStore } from "@/store/explorer-store";
 
@@ -26,14 +27,13 @@ export function ImpulseSparkline() {
 
 	if (hasNaN) {
 		return (
-			<div className="flex flex-col gap-1">
-				<span className="text-[10px] text-muted-foreground">h[n] impulse response</span>
-				<div className="flex items-center justify-center rounded border bg-[oklch(0.13_0.01_247)] py-3">
+			<PanelChrome title="h[n] impulse response">
+				<PanelSurface className="flex items-center justify-center py-3">
 					<span className="text-[10px] text-muted-foreground">
 						Repeated poles — partial fraction unsupported
 					</span>
-				</div>
-			</div>
+				</PanelSurface>
+			</PanelChrome>
 		);
 	}
 
@@ -46,13 +46,14 @@ export function ImpulseSparkline() {
 	const color = stable ? "oklch(0.7 0.15 145)" : "oklch(0.7 0.15 25)";
 
 	return (
-		<div className="flex flex-col gap-1">
-			<div className="flex items-center justify-between">
-				<span className="text-[10px] text-muted-foreground">h[n] impulse response</span>
+		<PanelChrome
+			title="h[n] impulse response"
+			actions={
 				<span className="text-[10px] font-medium" style={{ color }}>
 					{stable ? "stable" : "unstable"}
 				</span>
-			</div>
+			}
+		>
 			<svg
 				width={WIDTH}
 				height={HEIGHT}
@@ -90,6 +91,6 @@ export function ImpulseSparkline() {
 					);
 				})}
 			</svg>
-		</div>
+		</PanelChrome>
 	);
 }

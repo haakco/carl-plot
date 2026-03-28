@@ -1,8 +1,8 @@
 # Complex Explorer — Future Features Plan
 
 **Date:** 2026-03-28
-**Status:** Complete
-**Prerequisite:** Phases 1–5 complete (commit `7bcd4a6`)
+**Status:** In review
+**Prerequisite:** Phases 1–5 are mostly complete, but audit gaps remain against the original specification in `docs/plans/complex-explorer-prompt.md`
 
 ---
 
@@ -91,7 +91,7 @@ This plan covers all features beyond the core 5 phases. Items are grouped into t
 - Shows 64 samples as vertical bars, color-coded green (stable) or red (unstable)
 - Includes stability indicator text
 - 8 unit tests covering FIR case, real poles, decay, growth, oscillation, and stability check
-- Added as collapsible section in `Toolbox.tsx`
+- Added as an always-visible analysis section in `Toolbox.tsx`
 
 ---
 
@@ -299,7 +299,53 @@ This plan covers all features beyond the core 5 phases. Items are grouped into t
 
 ---
 
-## All Features Complete
+## Audit Update — 2026-03-28
 
-All 13 planned features have been implemented with 13 bug fixes applied.
-Quality gates: TypeScript clean, Biome 0 errors, 153 tests passing (17 test files), production build clean.
+### Fixed in this review pass
+
+- [P1] `Reset view` in the command palette was calling the full store reset instead of only resetting the viewport.
+  - Added `resetView()` in `src/store/explorer-store.ts`
+  - Wired `CommandMenu.tsx` and `ExplorerLayout.tsx` to use the dedicated viewport reset path
+  - Added stronger unit/e2e coverage so the command now proves it preserves the current function while clearing `center`/`zoom`
+- [P1] Expression mode still had stale data leaks outside the toolbox.
+  - `CoordReadout.tsx` now evaluates the active expression instead of falling back to stale pole/zero math
+  - `CauchyContour.tsx` now hides in expression mode, matching the existing mode-guard pattern used elsewhere
+- [P1] `CauchyContour.tsx` was reimplementing rational evaluation and residue math instead of using shared utilities.
+  - Replaced local math with `evaluateRational()` and `computeAllResidues()`
+  - Repeated-pole contours now report the integral as unavailable instead of propagating `NaN`
+  - Added dedicated component tests for expression-mode hiding and repeated-pole handling
+- [P2] HaakCo project-skill wiring was missing from this repo.
+  - Added `.skills/project-skills.yaml` with the HaakCo quality skills used during this audit
+- [P2] Explorer analysis panels had avoidable duplicate shell/chrome markup.
+  - Extracted reusable `PanelChrome` / `PanelSurface` primitives and reused them across the small analysis widgets
+
+### Remaining audit gaps
+
+- [P1] The original spec’s command-palette preset functions are still incomplete.
+  - The prompt explicitly calls for `identity`, `1/z`, `z²`, and `sin(z)` palette presets
+  - The current palette still enumerates the existing preset list instead of exposing those canonical function commands directly
+- [P1] The prompt’s richer preset gallery requirement is only partially met.
+  - The current gallery is categorized text with descriptions
+  - Thumbnail-based preset cards from the original prompt are still missing
+- [P2] The prompt overstates expression-mode support as “arbitrary complex expressions.”
+  - The live compiler is a curated whitelist in `src/math/ast-to-glsl.ts`
+  - This plan should continue treating expression support as curated/supported functions, not fully arbitrary Math.js input
+- [P2] Canonical parity coverage is still incomplete against the prompt.
+  - The parity suite covers `z`, `1/z`, and `(z-1)/(z+1)`
+  - `sin(z)` parity coverage is still missing
+- [P2] Ghost-trail coverage is still incomplete.
+  - Store behavior is tested
+  - There is still no end-to-end assertion for visible trail rendering or the documented 600ms linger
+
+### Verified quality gates
+
+- `pnpm lint` passed
+- `pnpm test` passed: 162 tests across 21 Vitest files
+- `pnpm test:e2e` passed: 61 Playwright tests across 2 spec files
+- `pnpm build` passed
+- HaakCo validator complexity check passed with no violations
+- HaakCo validator duplication check passed at 1.6%
+
+### Known warnings
+
+- `pnpm build` still emits large-chunk warnings for the client bundle; this is not failing the build, but it remains a follow-up performance task

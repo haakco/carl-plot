@@ -1,5 +1,6 @@
 import { useStore } from "@tanstack/react-store";
 import { useMemo } from "react";
+import { PanelChrome } from "@/components/common/PanelChrome";
 import { evaluateRational } from "@/math/evaluate-rational";
 import { explorerStore } from "@/store/explorer-store";
 
@@ -137,10 +138,7 @@ export function NyquistPlot() {
 	const unitR = scale;
 
 	return (
-		<div className="flex flex-col gap-1">
-			<div className="flex items-center justify-between">
-				<span className="text-[10px] text-muted-foreground">Nyquist plot</span>
-			</div>
+		<PanelChrome title="Nyquist plot">
 			<svg
 				width={WIDTH}
 				height={HEIGHT}
@@ -215,6 +213,6 @@ export function NyquistPlot() {
 					</span>
 				)}
 			</div>
-		</div>
+		</PanelChrome>
 	);
 }

@@ -368,17 +368,38 @@ test.describe("Complex Explorer - Feature Tests", () => {
 	// ─── Command Palette Commands ────────────────────────────────
 
 	test("reset view command works", async ({ page }) => {
-		// Pan the view first
-		const box = await moveMouseToCanvasPoint(page, 0.5, 0.5);
-		await page.mouse.down();
-		await page.mouse.move(box.x + box.width * 0.7, box.y + box.height * 0.7, { steps: 5 });
-		await page.mouse.up();
+		await loadSharedState(page, {
+			p: [[0.5, 0]],
+			z: [[-1, 0]],
+			g: 2,
+			cx: 1.25,
+			cy: -0.75,
+			zm: 2.5,
+		});
 
 		// Reset view
 		await runCommand(page, "Reset view");
 
-		// Canvas should still be visible
-		await expect(page.locator("canvas")).toBeVisible();
+		await page.waitForTimeout(500);
+		const decoded = await page.evaluate(() => {
+			const hash = window.location.hash.slice(1);
+			if (!hash) return null;
+			try {
+				return JSON.parse(atob(hash));
+			} catch {
+				return null;
+			}
+		});
+
+		expect(decoded).not.toBeNull();
+		if (decoded) {
+			expect(decoded.cx).toBeUndefined();
+			expect(decoded.cy).toBeUndefined();
+			expect(decoded.zm).toBeUndefined();
+			expect(decoded.g).toBe(2);
+			expect(decoded.p).toEqual([[0.5, 0]]);
+			expect(decoded.z).toEqual([[-1, 0]]);
+		}
 	});
 
 	test("toggle grid command works", async ({ page }) => {

@@ -1,6 +1,9 @@
 import { useStore } from "@tanstack/react-store";
 import { useCallback, useMemo, useRef } from "react";
 import { complexToPixel, pixelToComplex } from "@/lib/coordinates";
+import { formatComplex } from "@/math/complex";
+import { evaluateRational } from "@/math/evaluate-rational";
+import { computeAllResidues } from "@/math/residue";
 import { explorerStore, setCauchyCenter, setCauchyRadius } from "@/store/explorer-store";
 
 const CONTOUR_COLOR = "oklch(0.65 0.18 145)";
@@ -13,11 +16,6 @@ interface CauchyContourProps {
 	height: number;
 }
 
-interface Residue {
-	re: number;
-	im: number;
-}
-
 /** Compute distance between two complex numbers. */
 function complexDist(a: { re: number; im: number }, b: { re: number; im: number }): number {
 	const dr = a.re - b.re;
@@ -25,95 +23,12 @@ function complexDist(a: { re: number; im: number }, b: { re: number; im: number 
 	return Math.sqrt(dr * dr + di * di);
 }
 
-/** Multiply two complex numbers. */
-function cMul(
-	a: { re: number; im: number },
-	b: { re: number; im: number },
-): { re: number; im: number } {
-	return {
-		re: a.re * b.re - a.im * b.im,
-		im: a.re * b.im + a.im * b.re,
-	};
-}
-
-/** Divide two complex numbers. */
-function cDiv(
-	a: { re: number; im: number },
-	b: { re: number; im: number },
-): { re: number; im: number } {
-	const denom = b.re * b.re + b.im * b.im;
-	if (denom === 0) return { re: Number.NaN, im: Number.NaN };
-	return {
-		re: (a.re * b.re + a.im * b.im) / denom,
-		im: (a.im * b.re - a.re * b.im) / denom,
-	};
-}
-
-/** Subtract two complex numbers. */
-function cSub(
-	a: { re: number; im: number },
-	b: { re: number; im: number },
-): { re: number; im: number } {
-	return { re: a.re - b.re, im: a.im - b.im };
-}
-
-/**
- * Evaluate f(z) = gain * prod(z - zeros) / prod(z - poles)
- */
-function evaluateF(
-	z: { re: number; im: number },
-	zeros: { re: number; im: number }[],
-	poles: { re: number; im: number }[],
-	gain: number,
-): { re: number; im: number } {
-	let num: { re: number; im: number } = { re: gain, im: 0 };
-	for (const zero of zeros) {
-		num = cMul(num, cSub(z, zero));
-	}
-	let den: { re: number; im: number } = { re: 1, im: 0 };
-	for (const pole of poles) {
-		den = cMul(den, cSub(z, pole));
-	}
-	return cDiv(num, den);
-}
-
-/**
- * Compute residue at a simple pole p for f(z) = gain * prod(z-zeros) / prod(z-poles).
- * Residue = gain * prod(p - zeros) / prod'(p - otherPoles)
- */
-function computeResidue(
-	poleIndex: number,
-	poles: { re: number; im: number }[],
-	zeros: { re: number; im: number }[],
-	gain: number,
-): Residue {
-	const p = poles[poleIndex];
-	let num: { re: number; im: number } = { re: gain, im: 0 };
-	for (const zero of zeros) {
-		num = cMul(num, cSub(p, zero));
-	}
-	let den: { re: number; im: number } = { re: 1, im: 0 };
-	for (let i = 0; i < poles.length; i++) {
-		if (i === poleIndex) continue;
-		den = cMul(den, cSub(p, poles[i]));
-	}
-	return cDiv(num, den);
-}
-
-/** Format a complex number for display. */
-function formatComplex(z: { re: number; im: number }): string {
-	const re = Math.round(z.re * 1000) / 1000;
-	const im = Math.round(z.im * 1000) / 1000;
-	if (im === 0) return `${re}`;
-	const sign = im > 0 ? "+" : "-";
-	return `${re} ${sign} ${Math.abs(im)}i`;
-}
-
 export function CauchyContour({ width, height }: CauchyContourProps) {
 	const cauchyContour = useStore(explorerStore, (s) => s.cauchyContour);
 	const cauchyCenter = useStore(explorerStore, (s) => s.cauchyCenter);
 	const cauchyRadius = useStore(explorerStore, (s) => s.cauchyRadius);
 	const cauchyShowImage = useStore(explorerStore, (s) => s.cauchyShowImage);
+	const mode = useStore(explorerStore, (s) => s.mode);
 	const poles = useStore(explorerStore, (s) => s.poles);
 	const zeros = useStore(explorerStore, (s) => s.zeros);
 	const gain = useStore(explorerStore, (s) => s.gain);
@@ -140,22 +55,29 @@ export function CauchyContour({ width, height }: CauchyContourProps) {
 		return indices;
 	}, [poles, cauchyCenter, cauchyRadius]);
 
+	const residueMap = useMemo(() => computeAllResidues(poles, zeros, gain), [poles, zeros, gain]);
+
 	// Compute the integral (2*pi*i * sum of residues)
-	const integralResult = useMemo(() => {
+	const integralLabel = useMemo(() => {
 		if (enclosedPoleIndices.length === 0) {
-			return { re: 0, im: 0 };
+			return "0";
 		}
+
 		let sumResidues: { re: number; im: number } = { re: 0, im: 0 };
 		for (const idx of enclosedPoleIndices) {
-			const res = computeResidue(idx, poles, zeros, gain);
+			const res = residueMap.get(poles[idx].id);
+			if (!res || res.order > 1) {
+				return "unavailable (repeated poles)";
+			}
 			sumResidues = { re: sumResidues.re + res.re, im: sumResidues.im + res.im };
 		}
-		// Multiply by 2*pi*i: (a + bi) * 2*pi*i = -2*pi*b + 2*pi*a*i
-		return {
+
+		const integral = {
 			re: -2 * Math.PI * sumResidues.im,
 			im: 2 * Math.PI * sumResidues.re,
 		};
-	}, [enclosedPoleIndices, poles, zeros, gain]);
+		return formatComplex({ id: "cauchy-integral", type: "zero", ...integral });
+	}, [enclosedPoleIndices, poles, residueMap]);
 
 	// Build image curve path
 	const imageCurvePath = useMemo(() => {
@@ -167,14 +89,13 @@ export function CauchyContour({ width, height }: CauchyContourProps) {
 				re: cauchyCenter.re + cauchyRadius * Math.cos(theta),
 				im: cauchyCenter.im + cauchyRadius * Math.sin(theta),
 			};
-			const fz = evaluateF(z, zeros, poles, gain);
-			if (Number.isNaN(fz.re) || Number.isNaN(fz.im)) continue;
+			const fz = evaluateRational(z, poles, zeros, gain);
 			if (!Number.isFinite(fz.re) || !Number.isFinite(fz.im)) continue;
 			const pixel = complexToPixel(fz, width, height);
 			points.push(`${i === 0 ? "M" : "L"}${pixel.x},${pixel.y}`);
 		}
 		return points.join(" ");
-	}, [cauchyShowImage, cauchyCenter, cauchyRadius, zeros, poles, gain, width, height]);
+	}, [cauchyShowImage, cauchyCenter, cauchyRadius, poles, zeros, gain, width, height]);
 
 	// --- Drag handlers ---
 
@@ -241,7 +162,7 @@ export function CauchyContour({ width, height }: CauchyContourProps) {
 		[width, height],
 	);
 
-	if (!cauchyContour) return null;
+	if (!cauchyContour || mode !== "poles-zeros") return null;
 
 	const handleX = centerPixel.x + pixelRadius;
 	const handleY = centerPixel.y;
@@ -323,7 +244,7 @@ export function CauchyContour({ width, height }: CauchyContourProps) {
 				style={{ pointerEvents: "none" }}
 			>
 				{"\u222E f(z)dz = "}
-				{formatComplex(integralResult)}
+				{integralLabel}
 			</text>
 
 			{/* Image curve */}

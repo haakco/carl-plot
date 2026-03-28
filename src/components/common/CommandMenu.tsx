@@ -7,7 +7,7 @@ import {
 	clearAll,
 	loadPreset,
 	redo,
-	reset,
+	resetView,
 	setViewMode,
 	toggleConformalGrid,
 	toggleGrid,
@@ -50,7 +50,7 @@ export function CommandMenu() {
 								heading="View"
 								className="px-1 pb-1 text-[11px] font-medium text-muted-foreground"
 							>
-								<CommandItem onSelect={() => runAndClose(reset)} shortcut="Ctrl+0">
+								<CommandItem onSelect={() => runAndClose(resetView)} shortcut="Ctrl+0">
 									Reset view
 								</CommandItem>
 								<CommandItem onSelect={() => runAndClose(() => setViewMode("2d"))}>

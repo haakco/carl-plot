@@ -9,6 +9,7 @@ import {
 	explorerStore,
 	redo,
 	removeSingularity,
+	resetView,
 	setSelectedId,
 	undo,
 } from "@/store/explorer-store";
@@ -90,6 +91,11 @@ export function ExplorerLayout() {
 	useHotkeys("mod+shift+z", (e) => {
 		e.preventDefault();
 		redo();
+	});
+
+	useHotkeys("mod+0", (e) => {
+		e.preventDefault();
+		resetView();
 	});
 
 	useEffect(() => {
