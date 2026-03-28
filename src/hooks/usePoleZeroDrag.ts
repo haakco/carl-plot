@@ -3,7 +3,12 @@ import { useCallback, useRef } from "react";
 import { complexToPixel, pixelToComplex } from "@/lib/coordinates";
 import { moveWithConjugate, snapToGrid } from "@/lib/singularity-helpers";
 import type { Complex } from "@/math/complex";
-import { explorerStore, setSelectedId } from "@/store/explorer-store";
+import {
+	clearGhostTrail,
+	explorerStore,
+	pushGhostPoint,
+	setSelectedId,
+} from "@/store/explorer-store";
 
 const HIT_RADIUS_PX = 20;
 
@@ -32,6 +37,12 @@ function findNearestSingularity(
 	}
 
 	return nearest;
+}
+
+function recordGhostPoint(draggedId: string): void {
+	const { poles, zeros } = explorerStore.state;
+	const item = [...poles, ...zeros].find((p) => p.id === draggedId);
+	if (item) pushGhostPoint(item.re, item.im);
 }
 
 interface UsePoleZeroDragOptions {
@@ -71,12 +82,18 @@ export function usePoleZeroDrag({
 
 			if (first) {
 				onDragStart(localX, localY);
+				clearGhostTrail();
 			}
 
 			const draggedId = draggedIdRef.current;
 			if (!draggedId) return;
 
 			const complex = pixelToComplex(localX, localY, canvasWidth, canvasHeight);
+
+			if (!first && !last) {
+				recordGhostPoint(draggedId);
+			}
+
 			const position =
 				last && snap ? { re: snapToGrid(complex.re), im: snapToGrid(complex.im) } : complex;
 
@@ -84,6 +101,8 @@ export function usePoleZeroDrag({
 
 			if (last) {
 				draggedIdRef.current = null;
+				// Clear ghost trail after a short delay so the trail is briefly visible at rest
+				setTimeout(clearGhostTrail, 600);
 			}
 		},
 		{ pointer: { capture: false } },

@@ -1,9 +1,7 @@
-import type { Complex } from "./complex";
-
 export function evaluateRational(
 	z: { re: number; im: number },
-	poles: Complex[],
-	zeros: Complex[],
+	poles: { re: number; im: number }[],
+	zeros: { re: number; im: number }[],
 	gain: number,
 ): { re: number; im: number } {
 	// f(z) = gain * prod(z - zeros[i]) / prod(z - poles[i])

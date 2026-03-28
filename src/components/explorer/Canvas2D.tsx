@@ -4,6 +4,7 @@ import { useWebGLRenderer } from "@/hooks/useWebGLRenderer";
 import { PanZoomController } from "@/renderer/PanZoomController";
 import { explorerStore } from "@/store/explorer-store";
 import { CauchyContour } from "./CauchyContour";
+import { ConformalGrid } from "./ConformalGrid";
 import { MarkersOverlay } from "./MarkersOverlay";
 
 export function Canvas2D() {
@@ -22,7 +23,16 @@ export function Canvas2D() {
 		controller.init(canvas);
 		panZoomRef.current = controller;
 
+		// Re-sync d3 transform when center/zoom change from outside the zoom handler
+		// (preset load, URL decode, reset). Skip when the zoom handler itself is the source.
+		const subscription = explorerStore.subscribe(() => {
+			if (!controller.isZoomDriven) {
+				controller.syncTransformFromStore();
+			}
+		});
+
 		return () => {
+			subscription.unsubscribe();
 			controller.destroy();
 			panZoomRef.current = null;
 		};
@@ -61,6 +71,7 @@ export function Canvas2D() {
 			)}
 			{dimensions.width > 0 && (
 				<>
+					<ConformalGrid width={dimensions.width} height={dimensions.height} />
 					<CauchyContour width={dimensions.width} height={dimensions.height} />
 					<MarkersOverlay width={dimensions.width} height={dimensions.height} />
 				</>

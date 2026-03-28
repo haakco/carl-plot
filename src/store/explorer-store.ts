@@ -29,11 +29,16 @@ export interface ExplorerState {
 	enforceConjugates: boolean;
 
 	formulaForm: "factored" | "expanded";
+	showAllResidues: boolean;
+
+	showConformalGrid: boolean;
 
 	cauchyContour: boolean;
 	cauchyCenter: { re: number; im: number };
 	cauchyRadius: number;
 	cauchyShowImage: boolean;
+
+	ghostTrail: { re: number; im: number }[];
 
 	webglContextLost: boolean;
 }
@@ -63,11 +68,16 @@ const initialState: ExplorerState = {
 	enforceConjugates: true,
 
 	formulaForm: "factored",
+	showAllResidues: false,
+
+	showConformalGrid: false,
 
 	cauchyContour: false,
 	cauchyCenter: { re: 0, im: 0 },
 	cauchyRadius: 1.5,
 	cauchyShowImage: false,
+
+	ghostTrail: [],
 
 	webglContextLost: false,
 };
@@ -150,7 +160,7 @@ function findConjugateIndex(
 }
 
 /** Create a list of Complex items, linking conjugate pairs when enforced. */
-function buildWithConjugates(
+export function buildWithConjugates(
 	type: "pole" | "zero",
 	roots: { re: number; im: number }[],
 	enforceConjugates: boolean,
@@ -231,6 +241,14 @@ export function setGain(gain: number): void {
 	explorerStore.setState((prev) => ({ ...prev, gain }));
 }
 
+/** Set gain without creating an undo history entry (for sweep animation). */
+export function setGainTransient(gain: number): void {
+	skipHistoryCapture = true;
+	explorerStore.setState((prev) => ({ ...prev, gain }));
+	previousState = explorerStore.state;
+	skipHistoryCapture = false;
+}
+
 export function setViewMode(viewMode: "2d" | "3d"): void {
 	explorerStore.setState((prev) => ({ ...prev, viewMode }));
 }
@@ -272,11 +290,22 @@ export function toggleEnforceConjugates(): void {
 	}));
 }
 
+export function toggleShowAllResidues(): void {
+	explorerStore.setState((prev) => ({
+		...prev,
+		showAllResidues: !prev.showAllResidues,
+	}));
+}
+
 export function toggleFormulaForm(): void {
 	explorerStore.setState((prev) => ({
 		...prev,
 		formulaForm: prev.formulaForm === "factored" ? "expanded" : "factored",
 	}));
+}
+
+export function toggleConformalGrid(): void {
+	explorerStore.setState((prev) => ({ ...prev, showConformalGrid: !prev.showConformalGrid }));
 }
 
 export function toggleCauchyContour(): void {
@@ -295,8 +324,38 @@ export function toggleCauchyShowImage(): void {
 	explorerStore.setState((prev) => ({ ...prev, cauchyShowImage: !prev.cauchyShowImage }));
 }
 
+const MAX_GHOST_POINTS = 40;
+
+export function pushGhostPoint(re: number, im: number): void {
+	explorerStore.setState((prev) => {
+		const trail =
+			prev.ghostTrail.length >= MAX_GHOST_POINTS
+				? [...prev.ghostTrail.slice(1), { re, im }]
+				: [...prev.ghostTrail, { re, im }];
+		return { ...prev, ghostTrail: trail };
+	});
+}
+
+export function clearGhostTrail(): void {
+	explorerStore.setState((prev) => ({ ...prev, ghostTrail: [] }));
+}
+
 export function reset(): void {
 	explorerStore.setState(() => ({ ...initialState }));
+}
+
+export function clearAll(): void {
+	explorerStore.setState((prev) => ({
+		...prev,
+		poles: [],
+		zeros: [],
+		gain: 1,
+		selectedId: null,
+		hoveredId: null,
+		expression: "",
+		expressionError: null,
+		expressionLatex: "",
+	}));
 }
 
 export function loadPreset(preset: Preset): void {
@@ -324,17 +383,61 @@ const redoStack: ExplorerState[] = [];
 let previousState: ExplorerState = explorerStore.state;
 let skipHistoryCapture = false;
 
+/** Check whether the change is to a field that should be undoable. */
+function isUndoableChange(prev: ExplorerState, next: ExplorerState): boolean {
+	// These transient fields should NOT trigger undo entries
+	if (
+		prev.cursorZ !== next.cursorZ ||
+		prev.hoveredId !== next.hoveredId ||
+		prev.center !== next.center ||
+		prev.zoom !== next.zoom ||
+		prev.ghostTrail !== next.ghostTrail ||
+		prev.webglContextLost !== next.webglContextLost
+	) {
+		// Check if ONLY transient fields changed
+		const withoutTransient = (s: ExplorerState) => ({
+			mode: s.mode,
+			poles: s.poles,
+			zeros: s.zeros,
+			gain: s.gain,
+			expression: s.expression,
+			expressionError: s.expressionError,
+			expressionLatex: s.expressionLatex,
+			showModContours: s.showModContours,
+			showPhaseContours: s.showPhaseContours,
+			showGrid: s.showGrid,
+			contourDensity: s.contourDensity,
+			selectedId: s.selectedId,
+			enforceConjugates: s.enforceConjugates,
+			formulaForm: s.formulaForm,
+			showAllResidues: s.showAllResidues,
+			viewMode: s.viewMode,
+			cauchyContour: s.cauchyContour,
+			cauchyCenter: s.cauchyCenter,
+			cauchyRadius: s.cauchyRadius,
+			cauchyShowImage: s.cauchyShowImage,
+		});
+		const a = withoutTransient(prev);
+		const b = withoutTransient(next);
+		// Quick structural comparison — all are primitives or object refs
+		return Object.keys(a).some((key) => a[key as keyof typeof a] !== b[key as keyof typeof b]);
+	}
+	return true;
+}
+
 explorerStore.subscribe(() => {
 	if (skipHistoryCapture) return;
 
 	const current = explorerStore.state;
 	if (current === previousState) return;
 
-	undoStack.push(previousState);
-	if (undoStack.length > HISTORY_LIMIT) {
-		undoStack.shift();
+	if (isUndoableChange(previousState, current)) {
+		undoStack.push(previousState);
+		if (undoStack.length > HISTORY_LIMIT) {
+			undoStack.shift();
+		}
+		redoStack.length = 0;
 	}
-	redoStack.length = 0;
 	previousState = current;
 });
 

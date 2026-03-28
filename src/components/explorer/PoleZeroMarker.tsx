@@ -2,7 +2,12 @@ import { useCallback, useRef } from "react";
 import { pixelToComplex } from "@/lib/coordinates";
 import { getStabilityColor, moveWithConjugate, snapToGrid } from "@/lib/singularity-helpers";
 import { formatComplex } from "@/math/complex";
-import { setSelectedId } from "@/store/explorer-store";
+import {
+	clearGhostTrail,
+	explorerStore,
+	pushGhostPoint,
+	setSelectedId,
+} from "@/store/explorer-store";
 
 interface PoleZeroMarkerProps {
 	type: "pole" | "zero";
@@ -14,6 +19,7 @@ interface PoleZeroMarkerProps {
 	canvasHeight: number;
 	re: number;
 	im: number;
+	multiplicity: number;
 }
 
 const POLE_COLOR = "oklch(0.65 0.18 25)";
@@ -29,6 +35,7 @@ export function PoleZeroMarker({
 	canvasHeight,
 	re,
 	im,
+	multiplicity,
 }: PoleZeroMarkerProps) {
 	const color = type === "pole" ? POLE_COLOR : ZERO_COLOR;
 	const size = isSelected ? 8 : 6;
@@ -48,6 +55,7 @@ export function PoleZeroMarker({
 			isDraggingRef.current = true;
 			hasDraggedRef.current = false;
 			setSelectedId(itemId);
+			clearGhostTrail();
 
 			const svgRect = svg.getBoundingClientRect();
 
@@ -57,6 +65,11 @@ export function PoleZeroMarker({
 				const localX = moveEvent.clientX - svgRect.left;
 				const localY = moveEvent.clientY - svgRect.top;
 				const complex = pixelToComplex(localX, localY, canvasWidth, canvasHeight);
+				// Record current position before moving for ghost trail
+				const current = [...explorerStore.state.poles, ...explorerStore.state.zeros].find(
+					(p) => p.id === itemId,
+				);
+				if (current) pushGhostPoint(current.re, current.im);
 				moveWithConjugate(itemId, complex);
 			};
 
@@ -64,6 +77,10 @@ export function PoleZeroMarker({
 				isDraggingRef.current = false;
 				window.removeEventListener("pointermove", onPointerMove);
 				window.removeEventListener("pointerup", onPointerUp);
+
+				if (hasDraggedRef.current) {
+					setTimeout(clearGhostTrail, 600);
+				}
 
 				if (!hasDraggedRef.current) return;
 
@@ -127,16 +144,30 @@ export function PoleZeroMarker({
 			)}
 
 			{/* Stability glow ring for poles (Z-transform: unit circle stability) */}
-			{type === "pole" && (
-				<circle
-					r={size + 10}
-					fill="none"
-					stroke={getStabilityColor(re, im)}
-					strokeWidth={2}
-					opacity={0.3}
-					strokeDasharray="4 2"
-				/>
-			)}
+			{type === "pole" &&
+				(() => {
+					const mag = Math.sqrt(re * re + im * im);
+					const isMarginal = mag >= 0.95 && mag <= 1.05;
+					return (
+						<circle
+							r={size + 10}
+							fill="none"
+							stroke={getStabilityColor(re, im)}
+							strokeWidth={2}
+							opacity={0.3}
+							strokeDasharray="4 2"
+						>
+							{isMarginal && (
+								<animate
+									attributeName="opacity"
+									values="0.2;0.6;0.2"
+									dur="1.5s"
+									repeatCount="indefinite"
+								/>
+							)}
+						</circle>
+					);
+				})()}
 
 			{type === "pole" ? (
 				<>
@@ -163,6 +194,39 @@ export function PoleZeroMarker({
 			) : (
 				/* Circle (o) marker */
 				<circle r={size} fill="none" stroke={color} strokeWidth={strokeWidth} />
+			)}
+
+			{/* Multiplicity shockwave + badge */}
+			{multiplicity > 1 && (
+				<>
+					<circle r={size + 14} fill="none" stroke={color} strokeWidth={1.5} opacity={0}>
+						<animate
+							attributeName="r"
+							values={`${size};${size + 20}`}
+							dur="1.2s"
+							repeatCount="indefinite"
+						/>
+						<animate attributeName="opacity" values="0.5;0" dur="1.2s" repeatCount="indefinite" />
+					</circle>
+					<circle
+						cx={size + 4}
+						cy={-(size + 4)}
+						r={7}
+						fill="oklch(0.2 0 0)"
+						stroke={color}
+						strokeWidth={1}
+					/>
+					<text
+						x={size + 4}
+						y={-(size + 1)}
+						textAnchor="middle"
+						fill={color}
+						fontSize={9}
+						fontWeight="bold"
+					>
+						×{multiplicity}
+					</text>
+				</>
 			)}
 		</g>
 	);

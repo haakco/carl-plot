@@ -3,10 +3,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { CommandMenu } from "@/components/common/CommandMenu";
 import { announceToScreenReader, subscribeAnnouncer } from "@/lib/a11y-announce";
+import { moveWithConjugate } from "@/lib/singularity-helpers";
 import { decodeStateFromUrl, encodeStateToUrl } from "@/lib/url-state";
 import {
 	explorerStore,
-	moveSingularity,
 	redo,
 	removeSingularity,
 	setSelectedId,
@@ -17,8 +17,10 @@ import { Canvas3D } from "./Canvas3D";
 import { CoordReadout } from "./CoordReadout";
 import { FormulaBar } from "./FormulaBar";
 import { PoleZeroPanel } from "./PoleZeroPanel";
+import { StabilityLegend } from "./StabilityLegend";
 import { Toolbox } from "./Toolbox";
 import { TopBar } from "./TopBar";
+import { Tutorial } from "./Tutorial";
 
 function A11yAnnouncer() {
 	const [message, setMessage] = useState("");
@@ -60,7 +62,7 @@ export function ExplorerLayout() {
 		if (!selectedId) return;
 		const item = poles.find((p) => p.id === selectedId) ?? zeros.find((z) => z.id === selectedId);
 		if (!item) return;
-		moveSingularity(selectedId, item.re + dRe, item.im + dIm);
+		moveWithConjugate(selectedId, { re: item.re + dRe, im: item.im + dIm });
 	}, []);
 
 	useHotkeys("up", (e) => {
@@ -120,7 +122,9 @@ export function ExplorerLayout() {
 				<main className="relative min-w-0 flex-1" aria-label="Complex plane visualization">
 					{viewMode === "2d" ? <Canvas2D /> : <Canvas3D />}
 					{viewMode === "2d" && <CoordReadout />}
+					{viewMode === "2d" && <StabilityLegend />}
 					{viewMode === "3d" && <PoleZeroPanel />}
+					<Tutorial />
 				</main>
 			</div>
 

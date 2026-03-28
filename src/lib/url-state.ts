@@ -1,3 +1,4 @@
+import { nanoid } from "nanoid";
 import type { Complex } from "@/math/complex";
 import { createComplex } from "@/math/complex";
 import { explorerStore, loadPreset } from "@/store/explorer-store";
@@ -6,6 +7,10 @@ interface UrlState {
 	m?: "pz" | "ex";
 	p?: [number, number][];
 	z?: [number, number][];
+	/** Conjugate pair indices: [[i, j], ...] where p[i] and p[j] are paired */
+	pp?: [number, number][];
+	/** Conjugate pair indices for zeros */
+	zp?: [number, number][];
 	g?: number;
 	e?: string;
 	cx?: number;
@@ -18,8 +23,43 @@ function serializeComplex(items: Complex[]): [number, number][] {
 	return items.map((c) => [Math.round(c.re * 1000) / 1000, Math.round(c.im * 1000) / 1000]);
 }
 
-function deserializeComplex(type: "pole" | "zero", pairs: [number, number][]): Complex[] {
-	return pairs.map(([re, im]) => createComplex(type, re, im));
+/** Extract pair index tuples from a list of Complex items. */
+function serializePairs(items: Complex[]): [number, number][] | undefined {
+	const pairs: [number, number][] = [];
+	const seen = new Set<string>();
+	for (let i = 0; i < items.length; i++) {
+		const item = items[i];
+		if (!item.pairId || seen.has(item.id)) continue;
+		const j = items.findIndex((x) => x.id === item.pairId);
+		if (j >= 0) {
+			pairs.push([i, j]);
+			seen.add(item.id);
+			seen.add(items[j].id);
+		}
+	}
+	return pairs.length > 0 ? pairs : undefined;
+}
+
+function deserializeComplex(
+	type: "pole" | "zero",
+	coords: [number, number][],
+	pairIndices?: [number, number][],
+): Complex[] {
+	const items = coords.map(([re, im]) => createComplex(type, re, im));
+
+	// Restore explicit pair links from serialized metadata
+	if (pairIndices) {
+		for (const [i, j] of pairIndices) {
+			if (i < items.length && j < items.length) {
+				const id1 = nanoid();
+				const id2 = nanoid();
+				items[i] = { ...items[i], id: id1, pairId: id2 };
+				items[j] = { ...items[j], id: id2, pairId: id1 };
+			}
+		}
+	}
+
+	return items;
 }
 
 export function encodeStateToUrl(): void {
@@ -31,8 +71,14 @@ export function encodeStateToUrl(): void {
 		urlState.m = "ex";
 		if (state.expression) urlState.e = state.expression;
 	} else {
-		if (state.poles.length > 0) urlState.p = serializeComplex(state.poles);
-		if (state.zeros.length > 0) urlState.z = serializeComplex(state.zeros);
+		if (state.poles.length > 0) {
+			urlState.p = serializeComplex(state.poles);
+			urlState.pp = serializePairs(state.poles);
+		}
+		if (state.zeros.length > 0) {
+			urlState.z = serializeComplex(state.zeros);
+			urlState.zp = serializePairs(state.zeros);
+		}
 		if (state.gain !== 1) urlState.g = state.gain;
 	}
 
@@ -56,12 +102,13 @@ export function decodeStateFromUrl(): boolean {
 		const json = atob(hash);
 		const urlState: UrlState = JSON.parse(json);
 
-		const poles = urlState.p ? deserializeComplex("pole", urlState.p) : [];
-		const zeros = urlState.z ? deserializeComplex("zero", urlState.z) : [];
+		const poles = urlState.p ? deserializeComplex("pole", urlState.p, urlState.pp) : [];
+		const zeros = urlState.z ? deserializeComplex("zero", urlState.z, urlState.zp) : [];
 
 		loadPreset({
 			name: "URL State",
 			description: "Loaded from URL",
+			category: "basics",
 			poles,
 			zeros,
 			gain: urlState.g ?? 1,

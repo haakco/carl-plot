@@ -2,14 +2,18 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { Command } from "cmdk";
 import { useCallback, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
+import { exportCanvasToPng } from "@/lib/export-image";
 import {
+	clearAll,
 	loadPreset,
 	redo,
 	reset,
 	setViewMode,
+	toggleConformalGrid,
 	toggleGrid,
 	toggleModContours,
 	togglePhaseContours,
+	toggleShowAllResidues,
 	undo,
 } from "@/store/explorer-store";
 import { presets } from "@/store/presets";
@@ -70,6 +74,12 @@ export function CommandMenu() {
 								<CommandItem onSelect={() => runAndClose(togglePhaseContours)}>
 									Toggle phase contours
 								</CommandItem>
+								<CommandItem onSelect={() => runAndClose(toggleShowAllResidues)}>
+									Toggle residue labels
+								</CommandItem>
+								<CommandItem onSelect={() => runAndClose(toggleConformalGrid)}>
+									Toggle conformal grid
+								</CommandItem>
 							</Command.Group>
 
 							<Command.Separator className="mx-1 my-1 h-px bg-border" />
@@ -91,15 +101,50 @@ export function CommandMenu() {
 							<Command.Separator className="mx-1 my-1 h-px bg-border" />
 
 							<Command.Group
+								heading="Export"
+								className="px-1 pb-1 text-[11px] font-medium text-muted-foreground"
+							>
+								<CommandItem onSelect={() => runAndClose(exportCanvasToPng)}>
+									Export as PNG
+								</CommandItem>
+							</Command.Group>
+
+							<Command.Separator className="mx-1 my-1 h-px bg-border" />
+
+							<Command.Group
 								heading="Edit"
 								className="px-1 pb-1 text-[11px] font-medium text-muted-foreground"
 							>
-								<CommandItem onSelect={() => runAndClose(reset)}>Clear all poles/zeros</CommandItem>
+								<CommandItem onSelect={() => runAndClose(clearAll)}>
+									Clear all poles/zeros
+								</CommandItem>
 								<CommandItem onSelect={() => runAndClose(undo)} shortcut="Ctrl+Z">
 									Undo
 								</CommandItem>
 								<CommandItem onSelect={() => runAndClose(redo)} shortcut="Ctrl+Shift+Z">
 									Redo
+								</CommandItem>
+							</Command.Group>
+
+							<Command.Separator className="mx-1 my-1 h-px bg-border" />
+
+							<Command.Group
+								heading="Help"
+								className="px-1 pb-1 text-[11px] font-medium text-muted-foreground"
+							>
+								<CommandItem
+									onSelect={() =>
+										runAndClose(() => {
+											try {
+												localStorage.removeItem("complex-explorer-tutorial-dismissed");
+												window.location.reload();
+											} catch {
+												// ignore
+											}
+										})
+									}
+								>
+									Restart tutorial
 								</CommandItem>
 							</Command.Group>
 						</Command.List>

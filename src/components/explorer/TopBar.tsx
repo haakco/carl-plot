@@ -1,4 +1,5 @@
 import { useStore } from "@tanstack/react-store";
+import { exportCanvasToPng } from "@/lib/export-image";
 import { explorerStore, setViewMode } from "@/store/explorer-store";
 import { SettingsPanel } from "./SettingsPanel";
 
@@ -42,6 +43,14 @@ export function TopBar() {
 			</div>
 
 			<div className="flex items-center gap-2">
+				<button
+					type="button"
+					onClick={() => exportCanvasToPng()}
+					className="rounded border px-2 py-1 font-mono text-[11px] text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+					aria-label="Export canvas as PNG"
+				>
+					PNG
+				</button>
 				<SettingsPanel />
 				<kbd className="rounded border bg-secondary px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground">
 					⌘K

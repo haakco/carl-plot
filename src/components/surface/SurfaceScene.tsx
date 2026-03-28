@@ -48,6 +48,7 @@ export function SurfaceScene() {
 	return (
 		<Canvas
 			camera={{ position: cameraPosition, fov: 50, near: 0.1, far: 200 }}
+			gl={{ preserveDrawingBuffer: true }}
 			style={{ width: "100%", height: "100%" }}
 		>
 			<ambientLight intensity={0.4} />

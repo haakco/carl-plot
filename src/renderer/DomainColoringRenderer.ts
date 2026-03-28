@@ -70,7 +70,7 @@ export class DomainColoringRenderer {
 
 		const gl = this.canvas.getContext("webgl2", {
 			antialias: false,
-			preserveDrawingBuffer: false,
+			preserveDrawingBuffer: true,
 		});
 		if (!gl) {
 			throw new Error("WebGL2 is not supported in this browser");

@@ -3,15 +3,21 @@ import { createComplex } from "../math/complex";
 import {
 	addPole,
 	addZero,
+	clearAll,
+	clearGhostTrail,
 	explorerStore,
 	loadPreset,
 	moveSingularity,
+	pushGhostPoint,
 	redo,
 	removeSingularity,
 	reset,
 	setCenter,
+	setCursorZ,
 	setGain,
+	setGainTransient,
 	setZoom,
+	toggleConformalGrid,
 	undo,
 } from "./explorer-store";
 import type { Preset } from "./presets";
@@ -165,6 +171,16 @@ describe("undo / redo", () => {
 		undo();
 		expect(explorerStore.state.gain).toBe(1);
 	});
+
+	it("ignores cursor-only updates when capturing undo history", () => {
+		setGain(5);
+		setCursorZ({ re: 1, im: -2 });
+
+		undo();
+
+		expect(explorerStore.state.gain).toBe(1);
+		expect(explorerStore.state.cursorZ).toBeNull();
+	});
 });
 
 describe("loadPreset", () => {
@@ -172,6 +188,7 @@ describe("loadPreset", () => {
 		const preset: Preset = {
 			name: "Test preset",
 			description: "A test",
+			category: "basics",
 			poles: [createComplex("pole", 5, 0)],
 			zeros: [createComplex("zero", -1, 0)],
 			gain: 3,
@@ -188,5 +205,84 @@ describe("loadPreset", () => {
 		expect(explorerStore.state.zoom).toBe(0.5);
 		expect(explorerStore.state.mode).toBe("poles-zeros");
 		expect(explorerStore.state.selectedId).toBeNull();
+	});
+});
+
+describe("clearAll", () => {
+	it("removes all poles and zeros instead of restoring defaults", () => {
+		clearAll();
+
+		expect(explorerStore.state.poles).toEqual([]);
+		expect(explorerStore.state.zeros).toEqual([]);
+		expect(explorerStore.state.gain).toBe(1);
+	});
+
+	it("preserves view settings when clearing", () => {
+		setCenter(5, 3);
+		setZoom(2);
+		clearAll();
+
+		expect(explorerStore.state.center).toEqual({ re: 5, im: 3 });
+		expect(explorerStore.state.zoom).toBe(2);
+	});
+});
+
+describe("ghostTrail", () => {
+	it("pushGhostPoint adds a point to the trail", () => {
+		expect(explorerStore.state.ghostTrail).toEqual([]);
+		pushGhostPoint(1, 2);
+		expect(explorerStore.state.ghostTrail).toEqual([{ re: 1, im: 2 }]);
+	});
+
+	it("clearGhostTrail empties the trail", () => {
+		pushGhostPoint(1, 2);
+		pushGhostPoint(3, 4);
+		clearGhostTrail();
+		expect(explorerStore.state.ghostTrail).toEqual([]);
+	});
+
+	it("caps at 40 points", () => {
+		for (let i = 0; i < 50; i++) {
+			pushGhostPoint(i, i);
+		}
+		expect(explorerStore.state.ghostTrail.length).toBe(40);
+		// First point should be shifted out
+		expect(explorerStore.state.ghostTrail[0].re).toBe(10);
+	});
+
+	it("does not pollute undo history", () => {
+		setGain(5);
+		pushGhostPoint(1, 2);
+		pushGhostPoint(3, 4);
+		clearGhostTrail();
+
+		undo();
+		// Should undo gain change, not ghost trail changes
+		expect(explorerStore.state.gain).toBe(1);
+	});
+});
+
+describe("setGainTransient", () => {
+	it("updates gain without creating undo entry", () => {
+		setGain(2);
+		setGainTransient(5);
+		setGainTransient(7);
+		setGainTransient(9);
+
+		expect(explorerStore.state.gain).toBe(9);
+
+		undo();
+		// Should undo to before setGain(2), skipping all transient changes
+		expect(explorerStore.state.gain).toBe(1);
+	});
+});
+
+describe("toggleConformalGrid", () => {
+	it("toggles showConformalGrid", () => {
+		expect(explorerStore.state.showConformalGrid).toBe(false);
+		toggleConformalGrid();
+		expect(explorerStore.state.showConformalGrid).toBe(true);
+		toggleConformalGrid();
+		expect(explorerStore.state.showConformalGrid).toBe(false);
 	});
 });

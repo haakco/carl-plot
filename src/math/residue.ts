@@ -71,6 +71,49 @@ export function computeResidue(
 }
 
 /**
+ * Compute residues for all poles at once.
+ * Deduplicates poles at the same location to avoid redundant computation.
+ */
+export function computeAllResidues(
+	poles: Complex[],
+	zeros: Complex[],
+	gain: number,
+): Map<string, ResidueResult> {
+	const results = new Map<string, ResidueResult>();
+	const computed = new Map<string, ResidueResult>();
+
+	for (const pole of poles) {
+		const key = `${pole.re.toFixed(6)},${pole.im.toFixed(6)}`;
+		const cached = computed.get(key);
+		if (cached) {
+			results.set(pole.id, cached);
+		} else {
+			const result = computeResidue(pole, poles, zeros, gain);
+			computed.set(key, result);
+			results.set(pole.id, result);
+		}
+	}
+
+	return results;
+}
+
+/**
+ * Format a residue result as plain text (for SVG labels).
+ */
+export function formatResiduePlain(result: ResidueResult): string {
+	if (result.order > 1) return `order ${result.order}`;
+
+	const DISPLAY_EPSILON = 0.005;
+	const re = Math.round(result.re * 100) / 100;
+	const im = Math.round(result.im * 100) / 100;
+
+	if (Math.abs(im) < DISPLAY_EPSILON) return re.toFixed(2);
+	if (Math.abs(re) < DISPLAY_EPSILON) return `${im.toFixed(2)}i`;
+	const sign = im >= 0 ? "+" : "−";
+	return `${re.toFixed(2)} ${sign} ${Math.abs(im).toFixed(2)}i`;
+}
+
+/**
  * Format a residue result for display.
  */
 export function formatResidue(result: ResidueResult): string {
