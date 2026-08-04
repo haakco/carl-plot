@@ -1,2 +1,9 @@
 allowBuilds:
   esbuild: true
+  undici: true
+
+overrides:
+  undici: ^7.29.0
+  postcss: ^8.5.18
+  esbuild: ^0.28.1
+  "@babel/core": ^7.29.6
