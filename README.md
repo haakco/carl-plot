@@ -56,8 +56,8 @@ A PNG button captures the current canvas at print-friendly resolution.
 
 ## Documentation
 
-- **[Build specification](docs/plans/complex-explorer-prompt.md)** — complete spec covering product vision, tech stack, architecture, domain coloring theory, 3D surface, interaction design, formula system, state management, performance budget, accessibility, and a phased implementation plan.
-- **[Architecture research](docs/plans/compass_artifact_wf-c9900c2e-6d90-47ba-9da1-a5265ad12430_text_markdown.md)** — the technical research backing the build choices (WebGL2 vs WebGPU, domain coloring math, drag-and-drop patterns, the recommended library stack, and 60fps architecture on student Chromebooks).
+- **[Build specification](docs/archive/complex-explorer-prompt.md)** — complete spec covering product vision, tech stack, architecture, domain coloring theory, 3D surface, interaction design, formula system, state management, performance budget, accessibility, and a phased implementation plan.
+- **[Architecture research](docs/archive/compass_artifact_wf-c9900c2e-6d90-47ba-9da1-a5265ad12430_text_markdown.md)** — the technical research backing the build choices (WebGL2 vs WebGPU, domain coloring math, drag-and-drop patterns, the recommended library stack, and 60fps architecture on student Chromebooks).
 
 ---
 
@@ -123,13 +123,15 @@ The dev server boots the app at the configured local port; the production build 
 
 ```
 docs/
-├── screenshot.png                       # Live demo screenshot
-└── plans/
-    ├── complex-explorer-prompt.md       # Full build specification
-    └── compass_artifact_wf-…md          # Architecture & research
+├── screenshot.png                                              # Live demo screenshot
+├── plans/                                                     # Active plans
+└── archive/
+    ├── complex-explorer-prompt.md                              # Full build specification
+    ├── compass_artifact_wf-c9900c2e-…md                        # Architecture & research
+    └── 2026-03-28-future-features-plan.md                      # Forward-looking feature plan
 ```
 
-The implementation lives in source files alongside this directory. The plans in `docs/plans/` are the canonical reference for product intent, architectural decisions, and the math.
+The `docs/archive/` directory holds the canonical reference for product intent, architectural decisions, and the math.
 
 ---
 
