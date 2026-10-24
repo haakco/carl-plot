@@ -1,4 +1,4 @@
 [tools]
-node = "24.14.0"
+node = "24.22.1"
 pnpm = "latest"
 "npm:@biomejs/biome" = "latest"
